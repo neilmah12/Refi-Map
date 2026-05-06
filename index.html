@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Edmonton Multifamily Sales – Westmount / West Central</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <!-- MarkerCluster -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.Default.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/leaflet.markercluster.js"></script>
+
+  <!-- Awesome Markers (glyphicon clock icon for refi layer) -->
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+
+  <!-- Leaflet Heatmap -->
+  <script src="https://cdn.jsdelivr.net/gh/python-visualization/folium@main/folium/templates/leaflet_heat.min.js"></script>
+
+  <!-- D3 v3 (colorscale) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+
+  <!-- Typography -->
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      margin: 0; padding: 0;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    /* ── Map ── */
+    #map {
+      position: absolute;
+      top: 0; bottom: 0; right: 0;
+      left: 340px;   /* matches sidebar width */
+    }
+    .leaflet-left { left: 340px !important; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 340px;
+      height: 100vh;
+      background: #0f1923;
+      color: #e8edf2;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+      transition: transform 0.3s ease;
+    }
+    #sidebar.collapsed { transform: translateX(-340px); }
+
+    #sidebar-toggle {
+      position: fixed;
+      top: 50%; left: 340px;
+      transform: translateY(-50%);
+      z-index: 10000;
+      background: #0f1923;
+      color: #e8edf2;
+      border: none;
+      width: 28px; height: 64px;
+      cursor: pointer;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      transition: left 0.3s ease;
+    }
+
+    /* ── Sidebar sections ── */
+    #sidebar-header {
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid #1e2e3d;
+    }
+    #sidebar-header h2 {
+      margin: 0 0 2px;
+      font-size: 15px; font-weight: 700; color: #fff;
+    }
+    #sidebar-header p { margin: 0; font-size: 12px; color: #7a94a8; }
+
+    #filter-bar {
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e2e3d;
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .filter-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px; font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid #2a3f52;
+      background: transparent; color: #7a94a8;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn:hover          { border-color: #4a9eff; color: #4a9eff; }
+    .filter-btn.active         { background: #4a9eff; border-color: #4a9eff; color: #fff; }
+    .filter-btn.refi-btn.active{ background: #e67e00; border-color: #e67e00; color: #fff; }
+
+    #date-filter {
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e2e3d;
+    }
+    #date-filter label {
+      font-size: 11px; font-weight: 600;
+      color: #7a94a8;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      display: block; margin-bottom: 8px;
+    }
+    .date-row {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 6px;
+    }
+    .date-row span { font-size: 11px; color: #4a6070; white-space: nowrap; }
+    .date-input {
+      flex: 1;
+      background: #1a2a38; border: 1px solid #2a3f52; border-radius: 6px;
+      padding: 6px 8px;
+      font-family: 'DM Sans', sans-serif; font-size: 11px; color: #e8edf2;
+      outline: none; width: 100%;
+    }
+    .date-input:focus { border-color: #4a9eff; }
+    .date-input::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+    #date-clear {
+      font-family: 'DM Sans', sans-serif; font-size: 11px;
+      color: #4a6070; background: none; border: none;
+      cursor: pointer; padding: 0; text-decoration: underline;
+    }
+    #date-clear:hover { color: #7a94a8; }
+
+    #search-box {
+      padding: 10px 16px;
+      border-bottom: 1px solid #1e2e3d;
+    }
+    #search-box input {
+      width: 100%;
+      background: #1a2a38; border: 1px solid #2a3f52; border-radius: 6px;
+      padding: 7px 10px;
+      font-family: 'DM Sans', sans-serif; font-size: 12px; color: #e8edf2;
+      outline: none;
+    }
+    #search-box input::placeholder { color: #4a6070; }
+    #search-box input:focus { border-color: #4a9eff; }
+
+    #prop-count {
+      padding: 8px 16px 4px;
+      font-size: 11px; color: #4a6070; font-weight: 500;
+    }
+
+    #prop-list {
+      flex: 1; overflow-y: auto;
+      padding: 4px 8px 16px;
+    }
+    #prop-list::-webkit-scrollbar { width: 4px; }
+    #prop-list::-webkit-scrollbar-thumb { background: #2a3f52; border-radius: 2px; }
+
+    /* ── Property cards ── */
+    .prop-card {
+      background: #15232f; border: 1px solid #1e2e3d; border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 7px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .prop-card:hover          { border-color: #4a9eff; background: #1a2e40; }
+    .prop-card.refi-card      { border-left: 3px solid #e67e00; }
+    .prop-address {
+      font-size: 12px; font-weight: 600; color: #fff;
+      margin-bottom: 5px; line-height: 1.3;
+    }
+    .prop-meta {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 3px 8px; font-size: 11px; color: #7a94a8;
+    }
+    .prop-meta span b { color: #b0c4d4; font-weight: 500; }
+    .refi-badge {
+      display: inline-block;
+      background: #e67e00; color: #fff;
+      font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 10px; margin-bottom: 5px;
+    }
+
+    /* ── Popup ── */
+    .sale-popup {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px; width: 260px; line-height: 1.6;
+    }
+    .sale-popup .popup-title {
+      font-weight: 700; font-size: 14px; margin-bottom: 4px;
+    }
+    .sale-popup hr { margin: 4px 0; border-color: #eee; }
+    .refi-alert {
+      background: #fff3e0; border-left: 3px solid #e67e00;
+      padding: 6px 8px; margin: 6px 0; border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════ -->
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h2>Edmonton Multifamily Sales</h2>
+    <p>2019 – 2026 YTD &nbsp;|&nbsp; Westmount / West Central</p>
+  </div>
+
+  <div id="filter-bar">
+    <button class="filter-btn active" onclick="setFilter('all', this)">All Sales</button>
+    <button class="filter-btn refi-btn" onclick="setFilter('refi', this)">⏰ Refi Window</button>
+  </div>
+
+  <div id="date-filter">
+    <label>Sale Date Range</label>
+    <div class="date-row">
+      <span>From</span>
+      <input type="date" class="date-input" id="date-from"
+             value="2019-03-01" min="2019-03-01" max="2026-01-26"
+             onchange="renderList()">
+    </div>
+    <div class="date-row">
+      <span>To&nbsp;&nbsp;&nbsp;</span>
+      <input type="date" class="date-input" id="date-to"
+             value="2026-01-26" min="2019-03-01" max="2026-01-26"
+             onchange="renderList()">
+    </div>
+    <button id="date-clear" onclick="clearDates()">Reset dates</button>
+  </div>
+
+  <div id="search-box">
+    <input type="text" id="search-input"
+           placeholder="Search address, buyer, seller..."
+           oninput="renderList()">
+  </div>
+
+  <div id="prop-count"></div>
+  <div id="prop-list"></div>
+</div>
+
+<button id="sidebar-toggle" onclick="toggleSidebar()">&#9664;</button>
+
+<!-- ═══════════════════════════════════════════
+     MAP
+═══════════════════════════════════════════ -->
+<div id="map"></div>
+
+<!-- Data -->
+<script src="data/properties.js"></script>
+
+<script>
+// ─────────────────────────────────────────────
+// Map init
+// ─────────────────────────────────────────────
+const map = L.map('map', {
+  center: [53.5390, -113.5910],
+  zoom: 14,
+  zoomControl: true
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 20
+}).addTo(map);
+
+
+// ─────────────────────────────────────────────
+// Color scale (PPU, blue → red via D3 v3)
+// Domain: ~$72k (min) to ~$244k (max)
+// ─────────────────────────────────────────────
+function ppuToNumber(ppuStr) {
+  return parseFloat(ppuStr.replace(/[$,]/g, '')) || 0;
+}
+
+const ppuValues = allProps.map(p => ppuToNumber(p.ppu)).filter(v => v > 0);
+const ppuMin = Math.min(...ppuValues);
+const ppuMax = Math.max(...ppuValues);
+
+const colorScale = d3.scale.linear()
+  .domain([ppuMin, (ppuMin + ppuMax) / 2, ppuMax])
+  .range(['#2166ac', '#fee090', '#d73027']);
+
+function getColor(ppuStr) {
+  const v = ppuToNumber(ppuStr);
+  if (!v) return '#aaa';
+  return colorScale(v);
+}
+
+
+// ─────────────────────────────────────────────
+// Layers
+// ─────────────────────────────────────────────
+const clusterLayer = L.markerClusterGroup();
+const refiLayer    = L.featureGroup();
+const heatLayer    = L.heatLayer(
+  allProps.map(p => [p.lat, p.lng]),
+  { minOpacity: 0.5, maxZoom: 18, radius: 20, blur: 15 }
+);
+
+function popupHTML(p) {
+  return `
+    <div class="sale-popup">
+      <div class="popup-title">${p.address}</div>
+      <hr>
+      <b>Date:</b> ${p.saleDate}<br>
+      <b>Sale Price:</b> ${p.salePrice}<br>
+      <b>Total Units:</b> ${p.totalUnits}<br>
+      <b>PPU:</b> ${p.ppu}<br>
+      <b>Cap Rate:</b> ${p.capRate}<br>
+      <b>Year Built:</b> ${p.yearBuilt}<br>
+      <hr>
+      <b>Buyer:</b> ${p.buyer}<br>
+      <b>Buyer Dir:</b> ${p.buyerDir}<br>
+      <b>Seller:</b> ${p.seller}<br>
+      <b>Seller Dir:</b> ${p.sellerDir}<br>
+    </div>`;
+}
+
+function refiPopupHTML(p) {
+  return `
+    <div class="sale-popup">
+      <div class="popup-title">${p.address}</div>
+      <div class="refi-alert">⏰ Refi in ${p.monthsOut} (${p.refiDate})</div>
+      <b>Original Sale:</b> ${p.saleDate}<br>
+      <b>Sale Price:</b> ${p.salePrice}<br>
+      <b>Total Units:</b> ${p.totalUnits}<br>
+      <b>PPU:</b> ${p.ppu}<br>
+      <b>Cap Rate:</b> ${p.capRate}<br>
+      <hr>
+      <b>Owner:</b> ${p.buyer}<br>
+      <b>Director:</b> ${p.buyerDir}<br>
+    </div>`;
+}
+
+allProps.forEach(p => {
+  const color = getColor(p.ppu);
+
+  // Circle marker for cluster layer
+  const circle = L.circleMarker([p.lat, p.lng], {
+    radius: 7,
+    color: color,
+    fillColor: color,
+    fillOpacity: 0.85,
+    weight: 3
+  })
+    .bindPopup(popupHTML(p), { maxWidth: 280 })
+    .bindTooltip(`${p.address}: ${p.ppu}/unit`, { sticky: true });
+
+  clusterLayer.addLayer(circle);
+
+  // Refi marker
+  if (p.isRefi) {
+    const marker = L.marker([p.lat, p.lng], {
+      icon: L.AwesomeMarkers.icon({
+        markerColor: 'red',
+        iconColor: 'white',
+        icon: 'time',
+        prefix: 'glyphicon'
+      })
+    })
+      .bindPopup(refiPopupHTML(p), { maxWidth: 280 })
+      .bindTooltip(`⏰ Refi ${p.monthsOut} | ${p.address} | ${p.buyer}`, { sticky: true });
+
+    refiLayer.addLayer(marker);
+  }
+});
+
+clusterLayer.addTo(map);
+
+
+// ─────────────────────────────────────────────
+// PPU color legend
+// ─────────────────────────────────────────────
+const legend = L.control({ position: 'topright' });
+legend.onAdd = function() {
+  const div = L.DomUtil.create('div');
+  div.innerHTML = `
+    <svg width="200" height="44" style="display:block">
+      <defs>
+        <linearGradient id="ppuGrad" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0%"   stop-color="#2166ac"/>
+          <stop offset="50%"  stop-color="#fee090"/>
+          <stop offset="100%" stop-color="#d73027"/>
+        </linearGradient>
+      </defs>
+      <rect x="10" y="6" width="180" height="14" fill="url(#ppuGrad)" rx="3"/>
+      <text x="10"  y="36" font-family="DM Sans,sans-serif" font-size="10" fill="#333">$${Math.round(ppuMin/1000)}k</text>
+      <text x="85"  y="36" font-family="DM Sans,sans-serif" font-size="10" fill="#333" text-anchor="middle">Price Per Unit</text>
+      <text x="190" y="36" font-family="DM Sans,sans-serif" font-size="10" fill="#333" text-anchor="end">$${Math.round(ppuMax/1000)}k</text>
+    </svg>`;
+  div.style.background = 'rgba(255,255,255,0.92)';
+  div.style.borderRadius = '6px';
+  div.style.padding = '4px';
+  div.style.boxShadow = '0 1px 6px rgba(0,0,0,0.2)';
+  return div;
+};
+legend.addTo(map);
+
+
+// ─────────────────────────────────────────────
+// Layer control
+// ─────────────────────────────────────────────
+L.control.layers(
+  {},
+  {
+    'All Sales': clusterLayer,
+    'Refi Window (12–18 months)': refiLayer,
+    'Transaction Density': heatLayer
+  },
+  { position: 'topright', collapsed: false }
+).addTo(map);
+
+
+// ─────────────────────────────────────────────
+// Sidebar logic
+// ─────────────────────────────────────────────
+let currentFilter = 'all';
+
+function toggleSidebar() {
+  const sb  = document.getElementById('sidebar');
+  const btn = document.getElementById('sidebar-toggle');
+  const lcs = document.querySelectorAll('.leaflet-left');
+  const collapsed = sb.classList.toggle('collapsed');
+  btn.innerHTML  = collapsed ? '&#9654;' : '&#9664;';
+  btn.style.left = collapsed ? '0px' : '340px';
+  lcs.forEach(el => { el.style.left = collapsed ? '0px' : '340px'; });
+  document.getElementById('map').style.left = collapsed ? '0px' : '340px';
+}
+
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+function clearDates() {
+  document.getElementById('date-from').value = DATE_MIN;
+  document.getElementById('date-to').value   = DATE_MAX;
+  renderList();
+}
+
+function flyTo(lat, lng) {
+  map.flyTo([lat, lng], 16, { duration: 1 });
+}
+
+function renderList() {
+  const search   = document.getElementById('search-input').value.toLowerCase();
+  const dateFrom = document.getElementById('date-from').value;
+  const dateTo   = document.getElementById('date-to').value;
+
+  let props = allProps;
+
+  if (currentFilter === 'refi') props = props.filter(p => p.isRefi);
+  if (dateFrom) props = props.filter(p => p.saleDateIso >= dateFrom);
+  if (dateTo)   props = props.filter(p => p.saleDateIso <= dateTo);
+  if (search) {
+    props = props.filter(p =>
+      [p.address, p.buyer, p.seller, p.buyerDir, p.sellerDir]
+        .some(f => f && f.toLowerCase().includes(search))
+    );
+  }
+
+  document.getElementById('prop-count').textContent =
+    `${props.length} propert${props.length === 1 ? 'y' : 'ies'}`;
+
+  document.getElementById('prop-list').innerHTML = props.map(p => `
+    <div class="prop-card ${p.isRefi ? 'refi-card' : ''}" onclick="flyTo(${p.lat}, ${p.lng})">
+      ${p.isRefi ? `<div class="refi-badge">⏰ REFI ${p.monthsOut ? p.monthsOut.toUpperCase() : ''}</div>` : ''}
+      <div class="prop-address">${p.address}</div>
+      <div class="prop-meta">
+        <span><b>Date</b> ${p.saleDate}</span>
+        <span><b>Price</b> ${p.salePrice}</span>
+        <span><b>Units</b> ${p.totalUnits}</span>
+        <span><b>PPU</b> ${p.ppu}</span>
+        <span><b>Cap</b> ${p.capRate}</span>
+        <span><b>Built</b> ${p.yearBuilt}</span>
+        <span style="grid-column:span 2"><b>Buyer</b> ${p.buyer}</span>
+        <span style="grid-column:span 2"><b>Seller</b> ${p.seller}</span>
+        ${p.isRefi ? `<span style="grid-column:span 2"><b>Refi Due</b> ${p.refiDate}</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+document.addEventListener('DOMContentLoaded', renderList);
+</script>
+</body>
+</html>
