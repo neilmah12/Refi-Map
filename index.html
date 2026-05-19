@@ -466,7 +466,10 @@ function parseSiteAreaAcres(p) {
 // ─────────────────────────────────────────────
 // Color scale (PPU, blue → red via D3 v3)
 // ─────────────────────────────────────────────
-const ppuValues = allProps.map(p => ppuToNumber(p.ppu)).filter(v => v > 0);
+// Land PPU is per-acre (very different scale) — only use building PPU for the color scale
+const ppuValues = allProps
+  .filter(p => !p.propType || p.propType !== 'Land')
+  .map(p => ppuToNumber(p.ppu)).filter(v => v > 0);
 const ppuMin = Math.min(...ppuValues);
 const ppuMax = Math.max(...ppuValues);
 
@@ -474,8 +477,9 @@ const colorScale = d3.scale.linear()
   .domain([ppuMin, (ppuMin + ppuMax) / 2, ppuMax])
   .range(['#2166ac', '#fee090', '#d73027']);
 
-function getColor(ppuStr) {
-  const v = ppuToNumber(ppuStr);
+function getColor(p) {
+  if (p.propType === 'Land') return '#888';
+  const v = ppuToNumber(p.ppu);
   if (!v) return '#aaa';
   return colorScale(v);
 }
@@ -533,7 +537,7 @@ function refiPopupHTML(p) {
 }
 
 allProps.forEach(p => {
-  const color = getColor(p.ppu);
+  const color = getColor(p);
 
   const circle = L.circleMarker([p.lat, p.lng], {
     radius: 7,
@@ -543,7 +547,7 @@ allProps.forEach(p => {
     weight: 3
   })
     .bindPopup(popupHTML(p), { maxWidth: 280 })
-    .bindTooltip(`${p.address}: ${p.ppu}/unit`, { sticky: true });
+    .bindTooltip(`${p.address} | ${p.ppu}`, { sticky: true });
 
   clusterLayer.addLayer(circle);
 
