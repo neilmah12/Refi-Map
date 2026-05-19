@@ -3,23 +3,31 @@
 // Coverage: 2019-03-01 to 2026-01-26
 // Source: Gettel
 //
-// Fields:
+// Required fields:
 //   address      - civic address
 //   saleDate     - display string (e.g. "Jan 2026")
 //   saleDateIso  - ISO date string for filtering (YYYY-MM-DD)
-//   salePrice    - formatted string
-//   totalUnits   - string (number of suites)
+//   salePrice    - formatted string (e.g. "$1,500,000")
+//   totalUnits   - string (number of suites; "0" for land)
 //   ppu          - price per unit, formatted string
-//   capRate      - formatted string
-//   yearBuilt    - string
-//   buyer        - registered buyer entity
+//   capRate      - formatted string (e.g. "5.5%"; "0.0%" for land)
+//   yearBuilt    - string (4-digit year; "0" or "" for land/unknown)
+//   buyer        - registered buyer entity name
 //   buyerDir     - buyer director/principal
-//   seller       - registered seller entity
+//   seller       - registered seller entity name
 //   sellerDir    - seller director/principal
 //   refiDate     - estimated mortgage maturity (5yr from sale)
 //   monthsOut    - approximate months until refi from map build date
 //   isRefi       - boolean; true = within ~18mo refi window at time of build
 //   lat / lng    - WGS84 coordinates
+//
+// Optional fields (include for richer filtering/display):
+//   landUse      - zoning / land use class (e.g. "RA7", "DC1", "RF5")
+//   propType     - property type (e.g. "Building", "Land")
+//   description  - building subtype (e.g. "Walk-up", "Row House", "High-Rise")
+//   subdivision  - neighbourhood name (e.g. "Westmount", "Jasper Place")
+//   siteArea     - numeric site area value (e.g. 1.47 or 14890)
+//   siteUnits    - unit for siteArea: "Acres" or "Sq Ft"
 
 const DATE_MIN = "2019-03-01";
 const DATE_MAX = "2026-01-26";
