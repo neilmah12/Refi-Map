@@ -41,7 +41,7 @@
     #map {
       position: absolute;
       top: 0; bottom: 0; right: 0;
-      left: 340px;   /* matches sidebar width */
+      left: 340px;
     }
     .leaflet-left { left: 340px !important; }
 
@@ -79,7 +79,7 @@
 
     /* ── Sidebar sections ── */
     #sidebar-header {
-      padding: 20px 20px 14px;
+      padding: 14px 16px 10px;
       border-bottom: 1px solid #1e2e3d;
     }
     #sidebar-header h2 {
@@ -89,14 +89,14 @@
     #sidebar-header p { margin: 0; font-size: 12px; color: #7a94a8; }
 
     #filter-bar {
-      padding: 12px 16px;
+      padding: 8px 12px;
       border-bottom: 1px solid #1e2e3d;
       display: flex; gap: 8px; flex-wrap: wrap;
     }
     .filter-btn {
       font-family: 'DM Sans', sans-serif;
       font-size: 11px; font-weight: 600;
-      padding: 5px 12px;
+      padding: 4px 10px;
       border-radius: 20px;
       border: 1px solid #2a3f52;
       background: transparent; color: #7a94a8;
@@ -107,55 +107,102 @@
     .filter-btn.active         { background: #4a9eff; border-color: #4a9eff; color: #fff; }
     .filter-btn.refi-btn.active{ background: #e67e00; border-color: #e67e00; color: #fff; }
 
-    #date-filter {
-      padding: 12px 16px;
+    /* ── Filter sections ── */
+    .filter-section {
+      padding: 10px 14px;
       border-bottom: 1px solid #1e2e3d;
     }
-    #date-filter label {
-      font-size: 11px; font-weight: 600;
+    .filter-section label {
+      font-size: 10px; font-weight: 600;
       color: #7a94a8;
       text-transform: uppercase; letter-spacing: 0.06em;
-      display: block; margin-bottom: 8px;
+      display: block; margin-bottom: 6px;
     }
-    .date-row {
-      display: flex; gap: 8px; align-items: center; margin-bottom: 6px;
+    .filter-row {
+      display: flex; gap: 6px; align-items: center; margin-bottom: 4px;
     }
-    .date-row span { font-size: 11px; color: #4a6070; white-space: nowrap; }
-    .date-input {
+    .filter-row span { font-size: 11px; color: #4a6070; white-space: nowrap; min-width: 28px; }
+    .filter-input {
       flex: 1;
-      background: #1a2a38; border: 1px solid #2a3f52; border-radius: 6px;
-      padding: 6px 8px;
+      background: #1a2a38; border: 1px solid #2a3f52; border-radius: 5px;
+      padding: 5px 7px;
       font-family: 'DM Sans', sans-serif; font-size: 11px; color: #e8edf2;
       outline: none; width: 100%;
     }
-    .date-input:focus { border-color: #4a9eff; }
-    .date-input::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
-    #date-clear {
-      font-family: 'DM Sans', sans-serif; font-size: 11px;
-      color: #4a6070; background: none; border: none;
-      cursor: pointer; padding: 0; text-decoration: underline;
-    }
-    #date-clear:hover { color: #7a94a8; }
+    .filter-input:focus { border-color: #4a9eff; }
+    .filter-input::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+    .filter-input[type="number"]::-webkit-inner-spin-button,
+    .filter-input[type="number"]::-webkit-outer-spin-button { opacity: 0.4; }
 
+    /* inline min/max pair */
+    .range-pair {
+      display: flex; gap: 5px; align-items: center;
+    }
+    .range-pair .filter-input { min-width: 0; }
+    .range-pair .sep { font-size: 11px; color: #4a6070; }
+
+    .filter-reset {
+      font-family: 'DM Sans', sans-serif; font-size: 10px;
+      color: #4a6070; background: none; border: none;
+      cursor: pointer; padding: 2px 0 0; text-decoration: underline; float: right;
+      margin-top: -18px;
+    }
+    .filter-reset:hover { color: #7a94a8; }
+
+    /* ── Advanced filters toggle ── */
+    #adv-toggle {
+      padding: 8px 14px;
+      border-bottom: 1px solid #1e2e3d;
+      font-size: 11px; font-weight: 600; color: #4a9eff;
+      cursor: pointer; user-select: none;
+      display: flex; align-items: center; gap: 5px;
+    }
+    #adv-toggle:hover { color: #79b8ff; }
+    #adv-toggle .adv-arrow { transition: transform 0.2s; display: inline-block; }
+    #adv-toggle.open .adv-arrow { transform: rotate(90deg); }
+
+    #adv-filters {
+      display: none;
+      border-bottom: 1px solid #1e2e3d;
+      background: #0c1620;
+    }
+    #adv-filters.open { display: block; }
+    #adv-filters .filter-section { border-bottom: 1px solid #162130; }
+    #adv-filters .filter-section:last-child { border-bottom: none; }
+
+    /* ── Search box ── */
     #search-box {
-      padding: 10px 16px;
+      padding: 8px 14px;
       border-bottom: 1px solid #1e2e3d;
     }
     #search-box input {
       width: 100%;
       background: #1a2a38; border: 1px solid #2a3f52; border-radius: 6px;
-      padding: 7px 10px;
-      font-family: 'DM Sans', sans-serif; font-size: 12px; color: #e8edf2;
+      padding: 6px 10px;
+      font-family: 'DM Sans', sans-serif; font-size: 11px; color: #e8edf2;
       outline: none;
     }
     #search-box input::placeholder { color: #4a6070; }
     #search-box input:focus { border-color: #4a9eff; }
 
-    #prop-count {
-      padding: 8px 16px 4px;
-      font-size: 11px; color: #4a6070; font-weight: 500;
+    /* ── Sort + count bar ── */
+    #list-controls {
+      padding: 6px 14px;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid #1e2e3d;
     }
+    #prop-count {
+      font-size: 11px; color: #4a6070; font-weight: 500; flex: 1;
+    }
+    #sort-select {
+      background: #1a2a38; border: 1px solid #2a3f52; border-radius: 5px;
+      padding: 4px 6px;
+      font-family: 'DM Sans', sans-serif; font-size: 11px; color: #e8edf2;
+      outline: none; cursor: pointer;
+    }
+    #sort-select:focus { border-color: #4a9eff; }
 
+    /* ── Property list ── */
     #prop-list {
       flex: 1; overflow-y: auto;
       padding: 4px 8px 16px;
@@ -166,25 +213,33 @@
     /* ── Property cards ── */
     .prop-card {
       background: #15232f; border: 1px solid #1e2e3d; border-radius: 8px;
-      padding: 12px 14px; margin-bottom: 7px;
+      padding: 10px 12px; margin-bottom: 6px;
       cursor: pointer; transition: all 0.15s;
     }
     .prop-card:hover          { border-color: #4a9eff; background: #1a2e40; }
     .prop-card.refi-card      { border-left: 3px solid #e67e00; }
     .prop-address {
       font-size: 12px; font-weight: 600; color: #fff;
-      margin-bottom: 5px; line-height: 1.3;
+      margin-bottom: 4px; line-height: 1.3;
+    }
+    .prop-tags {
+      display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 5px;
+    }
+    .prop-tag {
+      font-size: 10px; font-weight: 600; color: #4a9eff;
+      background: #0d1e2e; border: 1px solid #1e3a52;
+      padding: 1px 6px; border-radius: 10px;
     }
     .prop-meta {
       display: grid; grid-template-columns: 1fr 1fr;
-      gap: 3px 8px; font-size: 11px; color: #7a94a8;
+      gap: 2px 8px; font-size: 11px; color: #7a94a8;
     }
     .prop-meta span b { color: #b0c4d4; font-weight: 500; }
     .refi-badge {
       display: inline-block;
       background: #e67e00; color: #fff;
       font-size: 10px; font-weight: 700;
-      padding: 2px 7px; border-radius: 10px; margin-bottom: 5px;
+      padding: 2px 7px; border-radius: 10px; margin-bottom: 4px;
     }
 
     /* ── Popup ── */
@@ -210,38 +265,144 @@
 <div id="sidebar">
   <div id="sidebar-header">
     <h2>Edmonton Multifamily Sales</h2>
-    <p>2019 – 2026 YTD &nbsp;|&nbsp; Westmount / West Central</p>
+    <p id="header-subtitle">2019 – 2026 YTD &nbsp;|&nbsp; Gettel</p>
   </div>
 
+  <!-- Layer filter buttons -->
   <div id="filter-bar">
     <button class="filter-btn active" onclick="setFilter('all', this)">All Sales</button>
     <button class="filter-btn refi-btn" onclick="setFilter('refi', this)">⏰ Refi Window</button>
   </div>
 
-  <div id="date-filter">
+  <!-- Sale Date Range -->
+  <div class="filter-section">
     <label>Sale Date Range</label>
-    <div class="date-row">
+    <button class="filter-reset" onclick="resetAll()">Reset all</button>
+    <div class="filter-row">
       <span>From</span>
-      <input type="date" class="date-input" id="date-from"
+      <input type="date" class="filter-input" id="date-from"
              value="2019-03-01" min="2019-03-01" max="2026-01-26"
              onchange="renderList()">
     </div>
-    <div class="date-row">
-      <span>To&nbsp;&nbsp;&nbsp;</span>
-      <input type="date" class="date-input" id="date-to"
+    <div class="filter-row">
+      <span>To</span>
+      <input type="date" class="filter-input" id="date-to"
              value="2026-01-26" min="2019-03-01" max="2026-01-26"
              onchange="renderList()">
     </div>
-    <button id="date-clear" onclick="clearDates()">Reset dates</button>
   </div>
 
+  <!-- Year Built Range -->
+  <div class="filter-section">
+    <label>Year Built Range</label>
+    <div class="filter-row">
+      <span>From</span>
+      <input type="number" class="filter-input" id="year-from"
+             placeholder="e.g. 1960" min="1900" max="2030"
+             oninput="renderList()">
+    </div>
+    <div class="filter-row">
+      <span>To</span>
+      <input type="number" class="filter-input" id="year-to"
+             placeholder="e.g. 2000" min="1900" max="2030"
+             oninput="renderList()">
+    </div>
+  </div>
+
+  <!-- Search -->
   <div id="search-box">
     <input type="text" id="search-input"
-           placeholder="Search address, buyer, seller..."
+           placeholder="Search address, buyer, seller, zoning…"
            oninput="renderList()">
   </div>
 
-  <div id="prop-count"></div>
+  <!-- Advanced Filters toggle -->
+  <div id="adv-toggle" onclick="toggleAdv()">
+    <span class="adv-arrow">▶</span> More Filters
+  </div>
+
+  <!-- Advanced Filters panel -->
+  <div id="adv-filters">
+
+    <!-- Sale Price -->
+    <div class="filter-section">
+      <label>Sale Price ($)</label>
+      <div class="range-pair">
+        <input type="number" class="filter-input" id="price-min"
+               placeholder="Min" min="0" oninput="renderList()">
+        <span class="sep">–</span>
+        <input type="number" class="filter-input" id="price-max"
+               placeholder="Max" min="0" oninput="renderList()">
+      </div>
+    </div>
+
+    <!-- Total Units -->
+    <div class="filter-section">
+      <label>Total Units</label>
+      <div class="range-pair">
+        <input type="number" class="filter-input" id="units-min"
+               placeholder="Min" min="0" oninput="renderList()">
+        <span class="sep">–</span>
+        <input type="number" class="filter-input" id="units-max"
+               placeholder="Max" min="0" oninput="renderList()">
+      </div>
+    </div>
+
+    <!-- Site Area -->
+    <div class="filter-section">
+      <label>Site Area (Acres)</label>
+      <div class="range-pair">
+        <input type="number" class="filter-input" id="area-min"
+               placeholder="Min" min="0" step="0.1" oninput="renderList()">
+        <span class="sep">–</span>
+        <input type="number" class="filter-input" id="area-max"
+               placeholder="Max" min="0" step="0.1" oninput="renderList()">
+      </div>
+      <div style="font-size:10px;color:#4a6070;margin-top:3px;">Sq Ft entries auto-converted. Leave blank to include all.</div>
+    </div>
+
+    <!-- Cap Rate -->
+    <div class="filter-section">
+      <label>Cap Rate (%)</label>
+      <div class="range-pair">
+        <input type="number" class="filter-input" id="cap-min"
+               placeholder="Min" min="0" step="0.1" oninput="renderList()">
+        <span class="sep">–</span>
+        <input type="number" class="filter-input" id="cap-max"
+               placeholder="Max" min="0" step="0.1" oninput="renderList()">
+      </div>
+    </div>
+
+    <!-- Zoning / Land Use -->
+    <div class="filter-section">
+      <label>Zoning / Land Use</label>
+      <input type="text" class="filter-input" id="zoning-input"
+             placeholder="e.g. RA7, DC1, RF5…" oninput="renderList()">
+    </div>
+
+  </div><!-- /adv-filters -->
+
+  <!-- Sort + count -->
+  <div id="list-controls">
+    <span id="prop-count">0 properties</span>
+    <select id="sort-select" onchange="renderList()">
+      <option value="date|desc">Date ↓</option>
+      <option value="date|asc">Date ↑</option>
+      <option value="yearBuilt|desc">Built ↓</option>
+      <option value="yearBuilt|asc">Built ↑</option>
+      <option value="price|desc">Price ↓</option>
+      <option value="price|asc">Price ↑</option>
+      <option value="ppu|desc">PPU ↓</option>
+      <option value="ppu|asc">PPU ↑</option>
+      <option value="cap|desc">Cap ↓</option>
+      <option value="cap|asc">Cap ↑</option>
+      <option value="units|desc">Units ↓</option>
+      <option value="units|asc">Units ↑</option>
+      <option value="area|desc">Area ↓</option>
+      <option value="area|asc">Area ↑</option>
+    </select>
+  </div>
+
   <div id="prop-list"></div>
 </div>
 
@@ -273,13 +434,38 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
 
 
 // ─────────────────────────────────────────────
-// Color scale (PPU, blue → red via D3 v3)
-// Domain: ~$72k (min) to ~$244k (max)
+// Numeric helpers
 // ─────────────────────────────────────────────
 function ppuToNumber(ppuStr) {
-  return parseFloat(ppuStr.replace(/[$,]/g, '')) || 0;
+  return parseFloat((ppuStr || '').replace(/[$,]/g, '')) || 0;
+}
+function parsePrice(s) {
+  return parseFloat((s || '').replace(/[$,]/g, '')) || 0;
+}
+function parseCap(s) {
+  return parseFloat((s || '').replace('%', '')) || 0;
+}
+function parseUnits(s) {
+  return parseInt(s) || 0;
+}
+function parseYear(s) {
+  return parseInt(s) || 0;
 }
 
+// Normalise site area to Acres (Sq Ft ÷ 43560)
+function parseSiteAreaAcres(p) {
+  if (!p.siteArea) return null;
+  const v = parseFloat(p.siteArea);
+  if (isNaN(v)) return null;
+  const unit = (p.siteUnits || '').toLowerCase();
+  if (unit === 'sq ft' || unit === 'sqft') return v / 43560;
+  return v; // assume Acres
+}
+
+
+// ─────────────────────────────────────────────
+// Color scale (PPU, blue → red via D3 v3)
+// ─────────────────────────────────────────────
 const ppuValues = allProps.map(p => ppuToNumber(p.ppu)).filter(v => v > 0);
 const ppuMin = Math.min(...ppuValues);
 const ppuMax = Math.max(...ppuValues);
@@ -306,6 +492,11 @@ const heatLayer    = L.heatLayer(
 );
 
 function popupHTML(p) {
+  const areaStr = p.siteArea
+    ? `<b>Site Area:</b> ${p.siteArea} ${p.siteUnits || ''}<br>`
+    : '';
+  const zoningStr = p.landUse ? `<b>Zoning:</b> ${p.landUse}<br>` : '';
+  const descStr   = p.description ? `<b>Type:</b> ${p.description}<br>` : '';
   return `
     <div class="sale-popup">
       <div class="popup-title">${p.address}</div>
@@ -316,6 +507,7 @@ function popupHTML(p) {
       <b>PPU:</b> ${p.ppu}<br>
       <b>Cap Rate:</b> ${p.capRate}<br>
       <b>Year Built:</b> ${p.yearBuilt}<br>
+      ${areaStr}${zoningStr}${descStr}
       <hr>
       <b>Buyer:</b> ${p.buyer}<br>
       <b>Buyer Dir:</b> ${p.buyerDir}<br>
@@ -343,7 +535,6 @@ function refiPopupHTML(p) {
 allProps.forEach(p => {
   const color = getColor(p.ppu);
 
-  // Circle marker for cluster layer
   const circle = L.circleMarker([p.lat, p.lng], {
     radius: 7,
     color: color,
@@ -356,7 +547,6 @@ allProps.forEach(p => {
 
   clusterLayer.addLayer(circle);
 
-  // Refi marker
   if (p.isRefi) {
     const marker = L.marker([p.lat, p.lng], {
       icon: L.AwesomeMarkers.icon({
@@ -393,7 +583,7 @@ legend.onAdd = function() {
       </defs>
       <rect x="10" y="6" width="180" height="14" fill="url(#ppuGrad)" rx="3"/>
       <text x="10"  y="36" font-family="DM Sans,sans-serif" font-size="10" fill="#333">$${Math.round(ppuMin/1000)}k</text>
-      <text x="85"  y="36" font-family="DM Sans,sans-serif" font-size="10" fill="#333" text-anchor="middle">Price Per Unit</text>
+      <text x="85"  y="36" font-family="DM Sans,sans-serif" font-size="10" fill="#333" text-anchor="middle">Price Per Unit ($)</text>
       <text x="190" y="36" font-family="DM Sans,sans-serif" font-size="10" fill="#333" text-anchor="end">$${Math.round(ppuMax/1000)}k</text>
     </svg>`;
   div.style.background = 'rgba(255,255,255,0.92)';
@@ -435,6 +625,13 @@ function toggleSidebar() {
   document.getElementById('map').style.left = collapsed ? '0px' : '340px';
 }
 
+function toggleAdv() {
+  const toggle = document.getElementById('adv-toggle');
+  const panel  = document.getElementById('adv-filters');
+  toggle.classList.toggle('open');
+  panel.classList.toggle('open');
+}
+
 function setFilter(filter, el) {
   currentFilter = filter;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -442,9 +639,22 @@ function setFilter(filter, el) {
   renderList();
 }
 
-function clearDates() {
-  document.getElementById('date-from').value = DATE_MIN;
-  document.getElementById('date-to').value   = DATE_MAX;
+function resetAll() {
+  document.getElementById('date-from').value   = DATE_MIN;
+  document.getElementById('date-to').value     = DATE_MAX;
+  document.getElementById('year-from').value   = '';
+  document.getElementById('year-to').value     = '';
+  document.getElementById('search-input').value = '';
+  document.getElementById('price-min').value   = '';
+  document.getElementById('price-max').value   = '';
+  document.getElementById('units-min').value   = '';
+  document.getElementById('units-max').value   = '';
+  document.getElementById('area-min').value    = '';
+  document.getElementById('area-max').value    = '';
+  document.getElementById('cap-min').value     = '';
+  document.getElementById('cap-max').value     = '';
+  document.getElementById('zoning-input').value = '';
+  document.getElementById('sort-select').value = 'date|desc';
   renderList();
 }
 
@@ -452,43 +662,133 @@ function flyTo(lat, lng) {
   map.flyTo([lat, lng], 16, { duration: 1 });
 }
 
+// ─────────────────────────────────────────────
+// Render list
+// ─────────────────────────────────────────────
+function getInputVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
 function renderList() {
-  const search   = document.getElementById('search-input').value.toLowerCase();
-  const dateFrom = document.getElementById('date-from').value;
-  const dateTo   = document.getElementById('date-to').value;
+  const search   = getInputVal('search-input').toLowerCase();
+  const dateFrom = getInputVal('date-from');
+  const dateTo   = getInputVal('date-to');
+  const yearFrom = getInputVal('year-from') !== '' ? parseInt(getInputVal('year-from')) : null;
+  const yearTo   = getInputVal('year-to')   !== '' ? parseInt(getInputVal('year-to'))   : null;
+  const priceMin = getInputVal('price-min') !== '' ? parseFloat(getInputVal('price-min')) : null;
+  const priceMax = getInputVal('price-max') !== '' ? parseFloat(getInputVal('price-max')) : null;
+  const unitsMin = getInputVal('units-min') !== '' ? parseInt(getInputVal('units-min')) : null;
+  const unitsMax = getInputVal('units-max') !== '' ? parseInt(getInputVal('units-max')) : null;
+  const areaMin  = getInputVal('area-min')  !== '' ? parseFloat(getInputVal('area-min')) : null;
+  const areaMax  = getInputVal('area-max')  !== '' ? parseFloat(getInputVal('area-max')) : null;
+  const capMin   = getInputVal('cap-min')   !== '' ? parseFloat(getInputVal('cap-min'))  : null;
+  const capMax   = getInputVal('cap-max')   !== '' ? parseFloat(getInputVal('cap-max'))  : null;
+  const zoningQ  = getInputVal('zoning-input').toLowerCase();
+  const sortVal  = getInputVal('sort-select') || 'date|desc';
 
   let props = allProps;
 
+  // Layer filter
   if (currentFilter === 'refi') props = props.filter(p => p.isRefi);
+
+  // Sale date range
   if (dateFrom) props = props.filter(p => p.saleDateIso >= dateFrom);
   if (dateTo)   props = props.filter(p => p.saleDateIso <= dateTo);
+
+  // Year built range
+  if (yearFrom !== null) props = props.filter(p => parseYear(p.yearBuilt) >= yearFrom);
+  if (yearTo   !== null) props = props.filter(p => parseYear(p.yearBuilt) <= yearTo);
+
+  // Sale price range
+  if (priceMin !== null) props = props.filter(p => parsePrice(p.salePrice) >= priceMin);
+  if (priceMax !== null) props = props.filter(p => parsePrice(p.salePrice) <= priceMax);
+
+  // Total units range
+  if (unitsMin !== null) props = props.filter(p => parseUnits(p.totalUnits) >= unitsMin);
+  if (unitsMax !== null) props = props.filter(p => parseUnits(p.totalUnits) <= unitsMax);
+
+  // Site area range (Acres)
+  if (areaMin !== null || areaMax !== null) {
+    props = props.filter(p => {
+      const a = parseSiteAreaAcres(p);
+      if (a === null) return false; // skip records with no area data when a filter is set
+      if (areaMin !== null && a < areaMin) return false;
+      if (areaMax !== null && a > areaMax) return false;
+      return true;
+    });
+  }
+
+  // Cap rate range
+  if (capMin !== null) props = props.filter(p => parseCap(p.capRate) >= capMin);
+  if (capMax !== null) props = props.filter(p => parseCap(p.capRate) <= capMax);
+
+  // Zoning filter
+  if (zoningQ) {
+    props = props.filter(p =>
+      (p.landUse || '').toLowerCase().includes(zoningQ)
+    );
+  }
+
+  // Text search
   if (search) {
     props = props.filter(p =>
-      [p.address, p.buyer, p.seller, p.buyerDir, p.sellerDir]
+      [p.address, p.buyer, p.seller, p.buyerDir, p.sellerDir,
+       p.subdivision, p.landUse, p.description, p.propType]
         .some(f => f && f.toLowerCase().includes(search))
     );
   }
 
+  // Sort
+  const [sortField, sortDir] = sortVal.split('|');
+  props = [...props].sort((a, b) => {
+    let av, bv;
+    switch (sortField) {
+      case 'date':      av = a.saleDateIso || ''; bv = b.saleDateIso || ''; break;
+      case 'yearBuilt': av = parseYear(a.yearBuilt); bv = parseYear(b.yearBuilt); break;
+      case 'price':     av = parsePrice(a.salePrice); bv = parsePrice(b.salePrice); break;
+      case 'ppu':       av = ppuToNumber(a.ppu); bv = ppuToNumber(b.ppu); break;
+      case 'cap':       av = parseCap(a.capRate); bv = parseCap(b.capRate); break;
+      case 'units':     av = parseUnits(a.totalUnits); bv = parseUnits(b.totalUnits); break;
+      case 'area':      av = parseSiteAreaAcres(a) || 0; bv = parseSiteAreaAcres(b) || 0; break;
+      default:          av = a.saleDateIso || ''; bv = b.saleDateIso || '';
+    }
+    if (sortDir === 'desc') return av < bv ? 1 : av > bv ? -1 : 0;
+    return av > bv ? 1 : av < bv ? -1 : 0;
+  });
+
+  // Update count
   document.getElementById('prop-count').textContent =
     `${props.length} propert${props.length === 1 ? 'y' : 'ies'}`;
 
-  document.getElementById('prop-list').innerHTML = props.map(p => `
+  // Render cards
+  document.getElementById('prop-list').innerHTML = props.map(p => {
+    const tags = [];
+    if (p.landUse)    tags.push(p.landUse);
+    if (p.description) tags.push(p.description);
+    if (p.siteArea)   tags.push(`${p.siteArea} ${p.siteUnits || ''}`);
+    const tagsHTML = tags.length
+      ? `<div class="prop-tags">${tags.map(t => `<span class="prop-tag">${t}</span>`).join('')}</div>`
+      : '';
+
+    return `
     <div class="prop-card ${p.isRefi ? 'refi-card' : ''}" onclick="flyTo(${p.lat}, ${p.lng})">
       ${p.isRefi ? `<div class="refi-badge">⏰ REFI ${p.monthsOut ? p.monthsOut.toUpperCase() : ''}</div>` : ''}
       <div class="prop-address">${p.address}</div>
+      ${tagsHTML}
       <div class="prop-meta">
         <span><b>Date</b> ${p.saleDate}</span>
+        <span><b>Built</b> ${p.yearBuilt || '—'}</span>
         <span><b>Price</b> ${p.salePrice}</span>
-        <span><b>Units</b> ${p.totalUnits}</span>
+        <span><b>Units</b> ${p.totalUnits || '—'}</span>
         <span><b>PPU</b> ${p.ppu}</span>
         <span><b>Cap</b> ${p.capRate}</span>
-        <span><b>Built</b> ${p.yearBuilt}</span>
         <span style="grid-column:span 2"><b>Buyer</b> ${p.buyer}</span>
         <span style="grid-column:span 2"><b>Seller</b> ${p.seller}</span>
         ${p.isRefi ? `<span style="grid-column:span 2"><b>Refi Due</b> ${p.refiDate}</span>` : ''}
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 document.addEventListener('DOMContentLoaded', renderList);
