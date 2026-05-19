@@ -272,6 +272,10 @@
   <div id="filter-bar">
     <button class="filter-btn active" onclick="setFilter('all', this)">All Sales</button>
     <button class="filter-btn refi-btn" onclick="setFilter('refi', this)">⏰ Refi Window</button>
+    <div style="width:100%;border-top:1px solid #1e2e3d;margin:2px 0;"></div>
+    <button class="filter-btn type-btn active" onclick="setTypeFilter('all', this)">All Types</button>
+    <button class="filter-btn type-btn" onclick="setTypeFilter('building', this)">Building</button>
+    <button class="filter-btn type-btn" onclick="setTypeFilter('land', this)">Land</button>
   </div>
 
   <!-- Sale Date Range -->
@@ -609,7 +613,8 @@ L.control.layers(
 // ─────────────────────────────────────────────
 // Sidebar logic
 // ─────────────────────────────────────────────
-let currentFilter = 'all';
+let currentFilter     = 'all';
+let currentTypeFilter = 'all';
 
 function toggleSidebar() {
   const sb  = document.getElementById('sidebar');
@@ -631,7 +636,15 @@ function toggleAdv() {
 
 function setFilter(filter, el) {
   currentFilter = filter;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  // only toggle active among the non-type buttons
+  document.querySelectorAll('.filter-btn:not(.type-btn)').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+function setTypeFilter(filter, el) {
+  currentTypeFilter = filter;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   renderList();
 }
@@ -652,6 +665,9 @@ function resetAll() {
   document.getElementById('cap-max').value     = '';
   document.getElementById('zoning-input').value = '';
   document.getElementById('sort-select').value = 'date|desc';
+  currentTypeFilter = 'all';
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.type-btn').classList.add('active');
   renderList();
 }
 
@@ -688,6 +704,11 @@ function renderList() {
 
   // Layer filter
   if (currentFilter === 'refi') props = props.filter(p => p.isRefi);
+
+  // Property type filter
+  if (currentTypeFilter !== 'all') {
+    props = props.filter(p => (p.propType || '').toLowerCase() === currentTypeFilter);
+  }
 
   // Sale date range
   if (dateFrom) props = props.filter(p => p.saleDateIso >= dateFrom);
