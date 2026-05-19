@@ -490,10 +490,7 @@ function getColor(p) {
 // ─────────────────────────────────────────────
 const clusterLayer = L.markerClusterGroup();
 const refiLayer    = L.featureGroup();
-const heatLayer    = L.heatLayer(
-  allProps.map(p => [p.lat, p.lng]),
-  { minOpacity: 0.5, maxZoom: 18, radius: 20, blur: 15 }
-);
+const heatLayer    = L.heatLayer([], { minOpacity: 0.5, maxZoom: 18, radius: 20, blur: 15 });
 
 function popupHTML(p) {
   const areaStr = p.siteArea
@@ -536,10 +533,10 @@ function refiPopupHTML(p) {
     </div>`;
 }
 
-allProps.forEach(p => {
+// Marker factories — called by renderList() each time filters change
+function makeCircleMarker(p) {
   const color = getColor(p);
-
-  const circle = L.circleMarker([p.lat, p.lng], {
+  return L.circleMarker([p.lat, p.lng], {
     radius: 7,
     color: color,
     fillColor: color,
@@ -548,24 +545,20 @@ allProps.forEach(p => {
   })
     .bindPopup(popupHTML(p), { maxWidth: 280 })
     .bindTooltip(`${p.address} | ${p.ppu}`, { sticky: true });
+}
 
-  clusterLayer.addLayer(circle);
-
-  if (p.isRefi) {
-    const marker = L.marker([p.lat, p.lng], {
-      icon: L.AwesomeMarkers.icon({
-        markerColor: 'red',
-        iconColor: 'white',
-        icon: 'time',
-        prefix: 'glyphicon'
-      })
+function makeRefiMarker(p) {
+  return L.marker([p.lat, p.lng], {
+    icon: L.AwesomeMarkers.icon({
+      markerColor: 'red',
+      iconColor: 'white',
+      icon: 'time',
+      prefix: 'glyphicon'
     })
-      .bindPopup(refiPopupHTML(p), { maxWidth: 280 })
-      .bindTooltip(`⏰ Refi ${p.monthsOut} | ${p.address} | ${p.buyer}`, { sticky: true });
-
-    refiLayer.addLayer(marker);
-  }
-});
+  })
+    .bindPopup(refiPopupHTML(p), { maxWidth: 280 })
+    .bindTooltip(`⏰ Refi ${p.monthsOut} | ${p.address} | ${p.buyer}`, { sticky: true });
+}
 
 clusterLayer.addTo(map);
 
@@ -760,6 +753,17 @@ function renderList() {
     if (sortDir === 'desc') return av < bv ? 1 : av > bv ? -1 : 0;
     return av > bv ? 1 : av < bv ? -1 : 0;
   });
+
+  // ── Update map layers to match filtered set ──
+  clusterLayer.clearLayers();
+  refiLayer.clearLayers();
+  props.forEach(p => {
+    clusterLayer.addLayer(makeCircleMarker(p));
+    if (p.isRefi) refiLayer.addLayer(makeRefiMarker(p));
+  });
+  if (heatLayer.setLatLngs) {
+    heatLayer.setLatLngs(props.map(p => [p.lat, p.lng]));
+  }
 
   // Update count
   document.getElementById('prop-count').textContent =
