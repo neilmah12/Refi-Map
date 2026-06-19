@@ -278,6 +278,19 @@
     .player-bar-track { height: 3px; background: #1a2a38; border-radius: 2px; }
     .player-bar-fill  { height: 3px; background: #4a9eff; border-radius: 2px; }
 
+    /* ── Trends panel ── */
+    #trends-panel {
+      display: none; flex: 1; overflow-y: auto;
+      padding: 8px 8px 16px;
+    }
+    #trends-panel.active { display: block; }
+    .chart-section { margin-bottom: 16px; }
+    .chart-label {
+      font-size: 10px; font-weight: 700; color: #7a94a8;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 6px; padding: 0 2px;
+    }
+
     /* ── Refi tier colours ── */
     .refi-badge.tier-critical    { background: #c0392b; }
     .refi-badge.tier-approaching { background: #e67e00; }
@@ -492,6 +505,7 @@
   <div id="tab-bar">
     <button class="tab-btn active" id="tab-list"    onclick="toggleTab('list')">List</button>
     <button class="tab-btn"        id="tab-players" onclick="toggleTab('players')">Players</button>
+    <button class="tab-btn"        id="tab-trends"  onclick="toggleTab('trends')">Trends</button>
   </div>
 
   <!-- Sort + count -->
@@ -519,6 +533,7 @@
   <div id="stats-bar"></div>
   <div id="prop-list"></div>
   <div id="players-panel"></div>
+  <div id="trends-panel"></div>
 </div>
 
 <button id="sidebar-toggle" onclick="toggleSidebar()">&#9664;</button>
@@ -596,9 +611,12 @@ function toggleTab(tab) {
   currentTab = tab;
   document.getElementById('tab-list').classList.toggle('active',    tab === 'list');
   document.getElementById('tab-players').classList.toggle('active', tab === 'players');
+  document.getElementById('tab-trends').classList.toggle('active',  tab === 'trends');
   document.getElementById('list-controls').style.display = tab === 'list' ? '' : 'none';
-  document.getElementById('prop-list').classList.toggle('active',    tab === 'list');
+  document.getElementById('prop-list').classList.toggle('active',     tab === 'list');
   document.getElementById('players-panel').classList.toggle('active', tab === 'players');
+  document.getElementById('trends-panel').classList.toggle('active',  tab === 'trends');
+  if (tab === 'trends') drawTrends(currentYearData);
 }
 
 function refiTier(p) {
@@ -949,6 +967,27 @@ function renderList() {
   // Store for export
   filteredProps = props;
 
+  // ── Year data for trends ──
+  const byYear = {};
+  props.forEach(p => {
+    const yr = (p.saleDateIso || '').slice(0, 4);
+    if (!yr) return;
+    if (!byYear[yr]) byYear[yr] = { vol: 0, ppuVals: [], count: 0 };
+    byYear[yr].vol += parsePrice(p.salePrice);
+    const ppu = ppuToNumber(p.ppu);
+    if (ppu > 0) byYear[yr].ppuVals.push(ppu);
+    byYear[yr].count++;
+  });
+  currentYearData = Object.keys(byYear).sort().map(yr => ({
+    year:   yr,
+    vol:    byYear[yr].vol,
+    avgPPU: byYear[yr].ppuVals.length
+      ? byYear[yr].ppuVals.reduce((a, b) => a + b, 0) / byYear[yr].ppuVals.length
+      : 0,
+    count:  byYear[yr].count,
+  }));
+  if (currentTab === 'trends') drawTrends(currentYearData);
+
   // ── Stats bar ──
   const totalVol = props.reduce((s, p) => s + parsePrice(p.salePrice), 0);
   const ppuVals  = props.map(p => ppuToNumber(p.ppu)).filter(v => v > 0);
@@ -1050,7 +1089,97 @@ function renderList() {
   }).join('');
 }
 
-let filteredProps = [];
+let filteredProps   = [];
+let currentYearData = [];
+
+// ─────────────────────────────────────────────
+// Trend charts (pure SVG)
+// ─────────────────────────────────────────────
+function drawTrends(yearData) {
+  const panel = document.getElementById('trends-panel');
+  if (!yearData.length) {
+    panel.innerHTML = '<p style="padding:20px;font-size:11px;color:#4a6070;text-align:center;">No data for current filters.</p>';
+    return;
+  }
+
+  const W = 372, padL = 46, padR = 10, padT = 12, padB = 28;
+  const innerW = W - padL - padR;
+  const n = yearData.length;
+  const barSpacing = innerW / n;
+  const barW = Math.max(6, Math.floor(barSpacing * 0.7));
+
+  // ── Volume bar chart ──
+  const barInnerH = 90;
+  const barTotalH = padT + barInnerH + padB;
+  const maxVol = Math.max(...yearData.map(d => d.vol));
+  const volStep = Math.pow(10, Math.floor(Math.log10(maxVol))) * Math.ceil(maxVol / Math.pow(10, Math.floor(Math.log10(maxVol))) / 4);
+  const volTicks = [0, 1, 2, 3, 4].map(i => i * volStep).filter(v => v <= maxVol * 1.15);
+
+  const volTickSVG = volTicks.map(v => {
+    const y = padT + barInnerH - Math.round((v / maxVol) * barInnerH);
+    return `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#1e2e3d" stroke-width="1"/>
+      <text x="${padL - 4}" y="${y + 3}" text-anchor="end" font-size="9" fill="#4a6070" font-family="DM Sans,sans-serif">${fmtVolume(v)}</text>`;
+  }).join('');
+
+  const barsSVG = yearData.map((d, i) => {
+    const bh  = Math.max(1, Math.round((d.vol / maxVol) * barInnerH));
+    const bx  = padL + i * barSpacing + (barSpacing - barW) / 2;
+    const by  = padT + barInnerH - bh;
+    const cx  = (bx + barW / 2).toFixed(1);
+    return `<rect x="${bx.toFixed(1)}" y="${by}" width="${barW}" height="${bh}" fill="#4a9eff" rx="2" opacity="0.85">
+        <title>${d.year}: ${fmtVolume(d.vol)} · ${d.count} deal${d.count !== 1 ? 's' : ''}</title>
+      </rect>
+      <text x="${cx}" y="${padT + barInnerH + 16}" text-anchor="middle" font-size="9" fill="#4a6070" font-family="DM Sans,sans-serif">${d.year.slice(2)}</text>`;
+  }).join('');
+
+  const barSVG = `<div class="chart-section">
+    <div class="chart-label">Volume by Year</div>
+    <svg width="${W}" height="${barTotalH}" style="display:block;overflow:visible">${volTickSVG}${barsSVG}</svg>
+  </div>`;
+
+  // ── Avg PPU line chart ──
+  const ppuData = yearData.filter(d => d.avgPPU > 0);
+  let lineSVG = '';
+
+  if (ppuData.length >= 2) {
+    const lineInnerH = 70;
+    const lineTotalH = padT + lineInnerH + padB;
+    const minPPU = Math.min(...ppuData.map(d => d.avgPPU));
+    const maxPPU = Math.max(...ppuData.map(d => d.avgPPU));
+    const ppuRange = maxPPU - minPPU || 1;
+
+    const ppuTickSVG = [0, 0.5, 1].map(t => {
+      const v = minPPU + t * ppuRange;
+      const y = padT + lineInnerH - Math.round(t * lineInnerH);
+      return `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#1e2e3d" stroke-width="1"/>
+        <text x="${padL - 4}" y="${y + 3}" text-anchor="end" font-size="9" fill="#4a6070" font-family="DM Sans,sans-serif">${fmtVolume(v)}</text>`;
+    }).join('');
+
+    const pts = ppuData.map(d => {
+      const i  = yearData.findIndex(y => y.year === d.year);
+      const cx = padL + i * barSpacing + barSpacing / 2;
+      const cy = padT + lineInnerH - Math.round(((d.avgPPU - minPPU) / ppuRange) * lineInnerH);
+      return { cx, cy, d };
+    });
+
+    const xLabelsSVG = yearData.map((d, i) => {
+      const cx = (padL + i * barSpacing + barSpacing / 2).toFixed(1);
+      return `<text x="${cx}" y="${padT + lineInnerH + 16}" text-anchor="middle" font-size="9" fill="#4a6070" font-family="DM Sans,sans-serif">${d.year.slice(2)}</text>`;
+    }).join('');
+
+    const polyline = `<polyline points="${pts.map(p => `${p.cx.toFixed(1)},${p.cy}`).join(' ')}" fill="none" stroke="#e67e00" stroke-width="2" stroke-linejoin="round"/>`;
+    const dots = pts.map(p => `<circle cx="${p.cx.toFixed(1)}" cy="${p.cy}" r="3.5" fill="#e67e00" stroke="#0f1923" stroke-width="1.5">
+        <title>${p.d.year}: ${fmtVolume(p.d.avgPPU)} avg PPU</title>
+      </circle>`).join('');
+
+    lineSVG = `<div class="chart-section">
+      <div class="chart-label">Avg PPU by Year</div>
+      <svg width="${W}" height="${lineTotalH}" style="display:block;overflow:visible">${ppuTickSVG}${polyline}${dots}${xLabelsSVG}</svg>
+    </div>`;
+  }
+
+  panel.innerHTML = barSVG + lineSVG;
+}
 
 function applyPlayerFilter(type, name) {
   if (type === 'buyer') {
