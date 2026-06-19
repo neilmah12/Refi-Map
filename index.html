@@ -44,15 +44,15 @@
     #map {
       position: absolute;
       top: 0; bottom: 0; right: 0;
-      left: 340px;
+      left: 400px;
     }
-    .leaflet-left { left: 340px !important; }
+    .leaflet-left { left: 400px !important; }
 
     /* ── Sidebar ── */
     #sidebar {
       position: fixed;
       top: 0; left: 0;
-      width: 340px;
+      width: 400px;
       height: 100vh;
       background: #0f1923;
       color: #e8edf2;
@@ -62,11 +62,11 @@
       box-shadow: 4px 0 24px rgba(0,0,0,0.4);
       transition: transform 0.3s ease;
     }
-    #sidebar.collapsed { transform: translateX(-340px); }
+    #sidebar.collapsed { transform: translateX(-400px); }
 
     #sidebar-toggle {
       position: fixed;
-      top: 50%; left: 340px;
+      top: 50%; left: 400px;
       transform: translateY(-50%);
       z-index: 10000;
       background: #0f1923;
@@ -772,9 +772,9 @@ function toggleSidebar() {
   const lcs = document.querySelectorAll('.leaflet-left');
   const collapsed = sb.classList.toggle('collapsed');
   btn.innerHTML  = collapsed ? '&#9654;' : '&#9664;';
-  btn.style.left = collapsed ? '0px' : '340px';
-  lcs.forEach(el => { el.style.left = collapsed ? '0px' : '340px'; });
-  document.getElementById('map').style.left = collapsed ? '0px' : '340px';
+  btn.style.left = collapsed ? '0px' : '400px';
+  lcs.forEach(el => { el.style.left = collapsed ? '0px' : '400px'; });
+  document.getElementById('map').style.left = collapsed ? '0px' : '400px';
 }
 
 function toggleAdv() {
