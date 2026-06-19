@@ -228,6 +228,37 @@
     .stat-label { display: block; font-size: 9px; font-weight: 600; color: #4a6070;
                   text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
 
+    /* ── Time slider ── */
+    #time-slider-bar {
+      padding: 7px 12px 6px;
+      border-bottom: 1px solid #1e2e3d;
+      flex-shrink: 0;
+      background: #0c1620;
+    }
+    #time-slider-bar .ts-row {
+      display: flex; align-items: center; gap: 7px;
+    }
+    #time-slider-bar .ts-label {
+      font-size: 10px; font-weight: 700; color: #7a94a8;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+    #year-slider {
+      flex: 1; accent-color: #4a9eff; cursor: pointer; height: 4px;
+    }
+    #slider-year-label {
+      font-size: 12px; font-weight: 700; color: #4a9eff;
+      min-width: 34px; text-align: center;
+    }
+    .ts-btn {
+      background: #162130; border: 1px solid #1e2e3d;
+      color: #7a94a8; padding: 3px 8px; border-radius: 4px;
+      font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer;
+      white-space: nowrap;
+    }
+    .ts-btn:hover { color: #4a9eff; border-color: #4a9eff; }
+    .ts-btn.playing { color: #e67e00; border-color: #e67e00; }
+
     /* ── Tab toggle (List / Players) ── */
     #tab-bar {
       display: flex; gap: 0; border-bottom: 1px solid #1e2e3d;
@@ -500,6 +531,18 @@
     </div>
 
   </div><!-- /adv-filters -->
+
+  <!-- Time slider -->
+  <div id="time-slider-bar">
+    <div class="ts-row">
+      <span class="ts-label">Sale Yr</span>
+      <input type="range" id="year-slider" min="2010" max="2026" value="2026" step="1"
+             oninput="onYearSlider(this.value)">
+      <span id="slider-year-label">All</span>
+      <button class="ts-btn" id="play-btn" onclick="togglePlay()">&#9654; Play</button>
+      <button class="ts-btn" onclick="resetYearSlider()">All</button>
+    </div>
+  </div>
 
   <!-- Tab bar -->
   <div id="tab-bar">
@@ -835,6 +878,10 @@ function resetAll() {
   document.getElementById('buyer-input').value  = '';
   document.getElementById('seller-input').value = '';
   document.getElementById('sort-select').value = 'date|desc';
+  sliderYear = null;
+  document.getElementById('year-slider').value = document.getElementById('year-slider').max;
+  document.getElementById('slider-year-label').textContent = 'All';
+  stopPlay();
   toggleTab('list');
   currentTypeFilter = 'all';
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -935,6 +982,11 @@ function renderList() {
       (p.seller    || '').toLowerCase().includes(sellerQ) ||
       (p.sellerDir || '').toLowerCase().includes(sellerQ)
     );
+  }
+
+  // Year slider filter
+  if (sliderYear !== null) {
+    props = props.filter(p => (p.saleDateIso || '').slice(0, 4) === String(sliderYear));
   }
 
   // Text search (general — catches all fields)
@@ -1092,6 +1144,69 @@ function renderList() {
 let filteredProps   = [];
 let currentYearData = [];
 
+// ── Time slider state ──
+let sliderYear    = null;  // null = all years
+let playInterval  = null;
+let sliderYearMin = 2010;
+let sliderYearMax = 2026;
+
+function initYearSlider() {
+  const years = (typeof allProps !== 'undefined' ? allProps : [])
+    .map(p => parseInt((p.saleDateIso || '').slice(0, 4)))
+    .filter(y => y > 1990);
+  if (!years.length) return;
+  sliderYearMin = Math.min(...years);
+  sliderYearMax = Math.max(...years);
+  const slider = document.getElementById('year-slider');
+  slider.min   = sliderYearMin;
+  slider.max   = sliderYearMax;
+  slider.value = sliderYearMax;
+}
+
+function onYearSlider(val) {
+  sliderYear = parseInt(val);
+  document.getElementById('slider-year-label').textContent = val;
+  renderList();
+}
+
+function resetYearSlider() {
+  sliderYear = null;
+  const slider = document.getElementById('year-slider');
+  slider.value = slider.max;
+  document.getElementById('slider-year-label').textContent = 'All';
+  stopPlay();
+  renderList();
+}
+
+function togglePlay() {
+  if (playInterval) { stopPlay(); } else { startPlay(); }
+}
+
+function startPlay() {
+  const slider = document.getElementById('year-slider');
+  let year = sliderYearMin;
+  sliderYear = year;
+  slider.value = year;
+  document.getElementById('slider-year-label').textContent = year;
+  document.getElementById('play-btn').textContent = '⏸ Pause';
+  document.getElementById('play-btn').classList.add('playing');
+  renderList();
+  playInterval = setInterval(() => {
+    year++;
+    if (year > sliderYearMax) { stopPlay(); return; }
+    sliderYear = year;
+    slider.value = year;
+    document.getElementById('slider-year-label').textContent = year;
+    renderList();
+  }, 900);
+}
+
+function stopPlay() {
+  if (playInterval) { clearInterval(playInterval); playInterval = null; }
+  document.getElementById('play-btn').textContent = '▶ Play';
+  document.getElementById('play-btn').classList.remove('playing');
+}
+
 // ─────────────────────────────────────────────
 // Trend charts (pure SVG)
 // ─────────────────────────────────────────────
@@ -1194,6 +1309,7 @@ function applyPlayerFilter(type, name) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  initYearSlider();
   toggleTab('list');
   renderList();
 });
