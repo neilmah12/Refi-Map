@@ -828,32 +828,36 @@ L.control.layers(
 // ─────────────────────────────────────────────
 // Draw filter (polygon / rectangle)
 // ─────────────────────────────────────────────
-drawnItems = new L.FeatureGroup().addTo(map);
+try {
+  drawnItems = new L.FeatureGroup().addTo(map);
 
-new L.Control.Draw({
-  position: 'bottomright',
-  draw: {
-    polygon:      { shapeOptions: { color: '#4a9eff', weight: 2, fillOpacity: 0.08 } },
-    rectangle:    { shapeOptions: { color: '#4a9eff', weight: 2, fillOpacity: 0.08 } },
-    polyline:     false,
-    circle:       false,
-    circlemarker: false,
-    marker:       false,
-  },
-  edit: { featureGroup: drawnItems }
-}).addTo(map);
+  new L.Control.Draw({
+    position: 'bottomright',
+    draw: {
+      polygon:      { shapeOptions: { color: '#4a9eff', weight: 2, fillOpacity: 0.08 } },
+      rectangle:    { shapeOptions: { color: '#4a9eff', weight: 2, fillOpacity: 0.08 } },
+      polyline:     false,
+      circle:       false,
+      circlemarker: false,
+      marker:       false,
+    },
+    edit: { featureGroup: drawnItems }
+  }).addTo(map);
 
-map.on('draw:created', function(e) {
-  drawnItems.clearLayers();
-  drawnItems.addLayer(e.layer);
-  drawFilter = { type: e.layerType, layer: e.layer };
-  renderList();
-});
+  map.on('draw:created', function(e) {
+    drawnItems.clearLayers();
+    drawnItems.addLayer(e.layer);
+    drawFilter = { type: e.layerType, layer: e.layer };
+    renderList();
+  });
 
-map.on('draw:deleted', function() {
-  drawFilter = null;
-  renderList();
-});
+  map.on('draw:deleted', function() {
+    drawFilter = null;
+    renderList();
+  });
+} catch(e) {
+  console.warn('Leaflet Draw not available:', e);
+}
 
 // ─────────────────────────────────────────────
 // Sidebar logic
