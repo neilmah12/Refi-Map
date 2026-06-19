@@ -9,6 +9,10 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
 
+  <!-- Leaflet Draw -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
   <!-- MarkerCluster -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.css"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.Default.css"/>
@@ -822,6 +826,36 @@ L.control.layers(
 
 
 // ─────────────────────────────────────────────
+// Draw filter (polygon / rectangle)
+// ─────────────────────────────────────────────
+drawnItems = new L.FeatureGroup().addTo(map);
+
+new L.Control.Draw({
+  position: 'bottomright',
+  draw: {
+    polygon:      { shapeOptions: { color: '#4a9eff', weight: 2, fillOpacity: 0.08 } },
+    rectangle:    { shapeOptions: { color: '#4a9eff', weight: 2, fillOpacity: 0.08 } },
+    polyline:     false,
+    circle:       false,
+    circlemarker: false,
+    marker:       false,
+  },
+  edit: { featureGroup: drawnItems }
+}).addTo(map);
+
+map.on('draw:created', function(e) {
+  drawnItems.clearLayers();
+  drawnItems.addLayer(e.layer);
+  drawFilter = { type: e.layerType, layer: e.layer };
+  renderList();
+});
+
+map.on('draw:deleted', function() {
+  drawFilter = null;
+  renderList();
+});
+
+// ─────────────────────────────────────────────
 // Sidebar logic
 // ─────────────────────────────────────────────
 let currentFilter     = 'all';
@@ -882,6 +916,8 @@ function resetAll() {
   document.getElementById('year-slider').value = document.getElementById('year-slider').max;
   document.getElementById('slider-year-label').textContent = 'All';
   stopPlay();
+  if (drawnItems) drawnItems.clearLayers();
+  drawFilter = null;
   toggleTab('list');
   currentTypeFilter = 'all';
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -987,6 +1023,11 @@ function renderList() {
   // Year slider filter
   if (sliderYear !== null) {
     props = props.filter(p => (p.saleDateIso || '').slice(0, 4) === String(sliderYear));
+  }
+
+  // Geographic draw filter
+  if (drawFilter) {
+    props = props.filter(p => p.lat && p.lng && pointInDrawFilter(p.lat, p.lng));
   }
 
   // Text search (general — catches all fields)
@@ -1143,6 +1184,30 @@ function renderList() {
 
 let filteredProps   = [];
 let currentYearData = [];
+
+// ── Geographic draw filter state ──
+let drawFilter  = null;   // { type: 'rectangle'|'polygon', layer }
+let drawnItems  = null;   // L.FeatureGroup added after map init
+
+function raycast(lat, lng, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].lat, yi = poly[i].lng;
+    const xj = poly[j].lat, yj = poly[j].lng;
+    if (((yi > lng) !== (yj > lng)) &&
+        (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function pointInDrawFilter(lat, lng) {
+  if (!drawFilter) return true;
+  const { type, layer } = drawFilter;
+  if (type === 'rectangle') return layer.getBounds().contains([lat, lng]);
+  return raycast(lat, lng, layer.getLatLngs()[0]);
+}
 
 // ── Time slider state ──
 let sliderYear    = null;  // null = all years
