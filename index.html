@@ -216,6 +216,29 @@
     }
     #export-btn:hover { background: #122a12; border-color: #2a6a2a; color: #7acc7a; }
 
+    /* ── Stats bar ── */
+    #stats-bar {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1px; background: #1e2e3d;
+      border-bottom: 1px solid #1e2e3d;
+      flex-shrink: 0;
+    }
+    .stat-item { background: #0f1923; padding: 6px 8px; text-align: center; }
+    .stat-val   { display: block; font-size: 13px; font-weight: 700; color: #fff; }
+    .stat-label { display: block; font-size: 9px; font-weight: 600; color: #4a6070;
+                  text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+
+    /* ── Refi tier colours ── */
+    .refi-badge.tier-critical    { background: #c0392b; }
+    .refi-badge.tier-approaching { background: #e67e00; }
+    .refi-badge.tier-horizon     { background: #9a7d0a; }
+    .prop-card.tier-critical    { border-left-color: #c0392b; }
+    .prop-card.tier-approaching { border-left-color: #e67e00; }
+    .prop-card.tier-horizon     { border-left-color: #9a7d0a; }
+    .refi-alert.tier-critical    { border-left-color: #c0392b; background: #fdecea; }
+    .refi-alert.tier-approaching { border-left-color: #e67e00; background: #fff3e0; }
+    .refi-alert.tier-horizon     { border-left-color: #9a7d0a; background: #fffde7; }
+
     /* ── Property list ── */
     #prop-list {
       flex: 1; overflow-y: auto;
@@ -436,6 +459,7 @@
     <button id="export-btn" onclick="exportToExcel()" title="Export filtered list to Excel">↓ xlsx</button>
   </div>
 
+  <div id="stats-bar"></div>
   <div id="prop-list"></div>
 </div>
 
@@ -493,6 +517,27 @@ function parseSiteAreaAcres(p) {
   const unit = (p.siteUnits || '').toLowerCase();
   if (unit === 'sq ft' || unit === 'sqft') return v / 43560;
   return v; // assume Acres
+}
+
+function fmtVolume(n) {
+  if (!n) return '—';
+  if (n >= 1e9) return '$' + (n / 1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'k';
+  return '$' + n.toFixed(0);
+}
+
+function parseMonthsOut(str) {
+  const m = parseInt((str || '').replace(/[^0-9]/g, ''));
+  return isNaN(m) ? null : m;
+}
+
+function refiTier(p) {
+  const m = parseMonthsOut(p.monthsOut);
+  if (m === null) return 'approaching';
+  if (m <= 6)  return 'critical';
+  if (m <= 12) return 'approaching';
+  return 'horizon';
 }
 
 
@@ -561,7 +606,7 @@ function refiPopupHTML(p) {
   return `
     <div class="sale-popup">
       <div class="popup-title">${p.address}${idBadge}</div>
-      <div class="refi-alert">⏰ Refi in ${p.monthsOut} (${p.refiDate})</div>
+      <div class="refi-alert tier-${refiTier(p)}">⏰ Refi in ${p.monthsOut} (${p.refiDate})</div>
       <b>Original Sale:</b> ${p.saleDate}<br>
       <b>Sale Price:</b> ${p.salePrice}<br>
       <b>Total Units:</b> ${p.totalUnits}<br>
@@ -590,7 +635,7 @@ function makeCircleMarker(p) {
 function makeRefiMarker(p) {
   return L.marker([p.lat, p.lng], {
     icon: L.AwesomeMarkers.icon({
-      markerColor: 'red',
+      markerColor: refiTier(p) === 'critical' ? 'red' : refiTier(p) === 'approaching' ? 'orange' : 'lightred',
       iconColor: 'white',
       icon: 'time',
       prefix: 'glyphicon'
@@ -834,6 +879,17 @@ function renderList() {
   // Store for export
   filteredProps = props;
 
+  // ── Stats bar ──
+  const totalVol = props.reduce((s, p) => s + parsePrice(p.salePrice), 0);
+  const ppuVals  = props.map(p => ppuToNumber(p.ppu)).filter(v => v > 0);
+  const capVals  = props.map(p => parseCap(p.capRate)).filter(v => v > 0);
+  const avgPPU   = ppuVals.length  ? ppuVals.reduce((s, v) => s + v, 0) / ppuVals.length  : 0;
+  const avgCap   = capVals.length  ? capVals.reduce((s, v) => s + v, 0) / capVals.length  : 0;
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat-item"><span class="stat-val">${fmtVolume(totalVol)}</span><span class="stat-label">Total Volume</span></div>
+    <div class="stat-item"><span class="stat-val">${avgPPU ? fmtVolume(avgPPU) : '—'}</span><span class="stat-label">Avg PPU</span></div>
+    <div class="stat-item"><span class="stat-val">${avgCap ? avgCap.toFixed(1) + '%' : '—'}</span><span class="stat-label">Avg Cap Rate</span></div>`;
+
   // ── Update map layers to match filtered set ──
   clusterLayer.clearLayers();
   refiLayer.clearLayers();
@@ -860,9 +916,10 @@ function renderList() {
       : '';
 
     const idLabel = p.propId ? `<span style="font-size:10px;color:#4a6070;font-weight:400;float:right;">ID #${p.propId}</span>` : '';
+    const tier = p.isRefi ? refiTier(p) : '';
     return `
-    <div class="prop-card ${p.isRefi ? 'refi-card' : ''}" onclick="flyTo(${p.lat}, ${p.lng})">
-      ${p.isRefi ? `<div class="refi-badge">⏰ REFI ${p.monthsOut ? p.monthsOut.toUpperCase() : ''}</div>` : ''}
+    <div class="prop-card ${p.isRefi ? `refi-card tier-${tier}` : ''}" onclick="flyTo(${p.lat}, ${p.lng})">
+      ${p.isRefi ? `<div class="refi-badge tier-${tier}">⏰ REFI ${p.monthsOut ? p.monthsOut.toUpperCase() : ''}</div>` : ''}
       <div class="prop-address">${idLabel}${p.address}</div>
       ${tagsHTML}
       <div class="prop-meta">
