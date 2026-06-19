@@ -25,6 +25,9 @@
   <!-- D3 v3 (colorscale) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 
+  <!-- SheetJS (Excel export) -->
+  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <!-- Typography -->
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -201,6 +204,17 @@
       outline: none; cursor: pointer;
     }
     #sort-select:focus { border-color: #4a9eff; }
+
+    /* ── Export button ── */
+    #export-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px; font-weight: 600;
+      padding: 4px 8px;
+      background: #0d2210; border: 1px solid #1e4a1e; border-radius: 5px;
+      color: #5aaa5a; cursor: pointer; white-space: nowrap;
+      transition: all 0.15s;
+    }
+    #export-btn:hover { background: #122a12; border-color: #2a6a2a; color: #7acc7a; }
 
     /* ── Property list ── */
     #prop-list {
@@ -384,6 +398,20 @@
              placeholder="e.g. RA7, DC1, RF5…" oninput="renderList()">
     </div>
 
+    <!-- Buyer / Purchaser -->
+    <div class="filter-section">
+      <label>Buyer / Purchaser</label>
+      <input type="text" class="filter-input" id="buyer-input"
+             placeholder="e.g. Cantiro, Smith Holdings…" oninput="renderList()">
+    </div>
+
+    <!-- Seller / Vendor -->
+    <div class="filter-section">
+      <label>Seller / Vendor</label>
+      <input type="text" class="filter-input" id="seller-input"
+             placeholder="e.g. Melcor, 1234567 Alberta…" oninput="renderList()">
+    </div>
+
   </div><!-- /adv-filters -->
 
   <!-- Sort + count -->
@@ -405,6 +433,7 @@
       <option value="area|desc">Area ↓</option>
       <option value="area|asc">Area ↑</option>
     </select>
+    <button id="export-btn" onclick="exportToExcel()" title="Export filtered list to Excel">↓ xlsx</button>
   </div>
 
   <div id="prop-list"></div>
@@ -497,14 +526,18 @@ const refiLayer    = L.featureGroup();
 const heatLayer    = L.heatLayer([], { minOpacity: 0.5, maxZoom: 18, radius: 20, blur: 15 });
 
 function popupHTML(p) {
-  const areaStr = p.siteArea
+  const areaStr   = p.siteArea
     ? `<b>Site Area:</b> ${p.siteArea} ${p.siteUnits || ''}<br>`
     : '';
-  const zoningStr = p.landUse ? `<b>Zoning:</b> ${p.landUse}<br>` : '';
-  const descStr   = p.description ? `<b>Type:</b> ${p.description}<br>` : '';
+  const zoningStr  = p.landUse   ? `<b>Zoning:</b> ${p.landUse}<br>`         : '';
+  const descStr    = p.description ? `<b>Type:</b> ${p.description}<br>`      : '';
+  const legalStr   = p.legalDesc ? `<b>Legal:</b> ${p.legalDesc}<br>`         : '';
+  const idBadge    = p.propId
+    ? `<span style="font-size:10px;color:#7a94a8;font-weight:400;">ID #${p.propId}</span>`
+    : '';
   return `
     <div class="sale-popup">
-      <div class="popup-title">${p.address}</div>
+      <div class="popup-title">${p.address} ${idBadge}</div>
       <hr>
       <b>Date:</b> ${p.saleDate}<br>
       <b>Sale Price:</b> ${p.salePrice}<br>
@@ -512,7 +545,7 @@ function popupHTML(p) {
       <b>PPU:</b> ${p.ppu}<br>
       <b>Cap Rate:</b> ${p.capRate}<br>
       <b>Year Built:</b> ${p.yearBuilt}<br>
-      ${areaStr}${zoningStr}${descStr}
+      ${areaStr}${zoningStr}${descStr}${legalStr}
       <hr>
       <b>Buyer:</b> ${p.buyer}<br>
       <b>Buyer Dir:</b> ${p.buyerDir}<br>
@@ -522,9 +555,12 @@ function popupHTML(p) {
 }
 
 function refiPopupHTML(p) {
+  const idBadge = p.propId
+    ? `<span style="font-size:10px;color:#7a94a8;font-weight:400;"> ID #${p.propId}</span>`
+    : '';
   return `
     <div class="sale-popup">
-      <div class="popup-title">${p.address}</div>
+      <div class="popup-title">${p.address}${idBadge}</div>
       <div class="refi-alert">⏰ Refi in ${p.monthsOut} (${p.refiDate})</div>
       <b>Original Sale:</b> ${p.saleDate}<br>
       <b>Sale Price:</b> ${p.salePrice}<br>
@@ -664,6 +700,8 @@ function resetAll() {
   document.getElementById('cap-min').value     = '';
   document.getElementById('cap-max').value     = '';
   document.getElementById('zoning-input').value = '';
+  document.getElementById('buyer-input').value  = '';
+  document.getElementById('seller-input').value = '';
   document.getElementById('sort-select').value = 'date|desc';
   currentTypeFilter = 'all';
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -698,6 +736,8 @@ function renderList() {
   const capMin   = getInputVal('cap-min')   !== '' ? parseFloat(getInputVal('cap-min'))  : null;
   const capMax   = getInputVal('cap-max')   !== '' ? parseFloat(getInputVal('cap-max'))  : null;
   const zoningQ  = getInputVal('zoning-input').toLowerCase();
+  const buyerQ   = getInputVal('buyer-input').toLowerCase();
+  const sellerQ  = getInputVal('seller-input').toLowerCase();
   const sortVal  = getInputVal('sort-select') || 'date|desc';
 
   let props = allProps;
@@ -748,7 +788,23 @@ function renderList() {
     );
   }
 
-  // Text search
+  // Buyer filter
+  if (buyerQ) {
+    props = props.filter(p =>
+      (p.buyer    || '').toLowerCase().includes(buyerQ) ||
+      (p.buyerDir || '').toLowerCase().includes(buyerQ)
+    );
+  }
+
+  // Seller filter
+  if (sellerQ) {
+    props = props.filter(p =>
+      (p.seller    || '').toLowerCase().includes(sellerQ) ||
+      (p.sellerDir || '').toLowerCase().includes(sellerQ)
+    );
+  }
+
+  // Text search (general — catches all fields)
   if (search) {
     props = props.filter(p =>
       [p.address, p.buyer, p.seller, p.buyerDir, p.sellerDir,
@@ -775,6 +831,9 @@ function renderList() {
     return av > bv ? 1 : av < bv ? -1 : 0;
   });
 
+  // Store for export
+  filteredProps = props;
+
   // ── Update map layers to match filtered set ──
   clusterLayer.clearLayers();
   refiLayer.clearLayers();
@@ -800,10 +859,11 @@ function renderList() {
       ? `<div class="prop-tags">${tags.map(t => `<span class="prop-tag">${t}</span>`).join('')}</div>`
       : '';
 
+    const idLabel = p.propId ? `<span style="font-size:10px;color:#4a6070;font-weight:400;float:right;">ID #${p.propId}</span>` : '';
     return `
     <div class="prop-card ${p.isRefi ? 'refi-card' : ''}" onclick="flyTo(${p.lat}, ${p.lng})">
       ${p.isRefi ? `<div class="refi-badge">⏰ REFI ${p.monthsOut ? p.monthsOut.toUpperCase() : ''}</div>` : ''}
-      <div class="prop-address">${p.address}</div>
+      <div class="prop-address">${idLabel}${p.address}</div>
       ${tagsHTML}
       <div class="prop-meta">
         <span><b>Date</b> ${p.saleDate}</span>
@@ -820,7 +880,69 @@ function renderList() {
   }).join('');
 }
 
+let filteredProps = [];
+
 document.addEventListener('DOMContentLoaded', renderList);
+
+// ─────────────────────────────────────────────
+// Excel export
+// ─────────────────────────────────────────────
+function exportToExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('Export library not loaded. Check your internet connection and refresh.');
+    return;
+  }
+  if (!filteredProps.length) {
+    alert('No properties to export.');
+    return;
+  }
+
+  const rows = filteredProps.map(p => {
+    const ppuMeasure = p.ppuMeasure || (p.ppu || '').split('/').slice(1).join('/') || '';
+    return {
+      'Home Path':           '',
+      '&Home':               '',
+      'Link':                p.propId ? 'View PDF' : '',
+      'Prop ID':             p.propId ? parseInt(p.propId) : '',
+      'Property Class':      p.propClass      || '',
+      'Property Type':       p.propType       || '',
+      'Ownership Type':      p.ownershipType  || '',
+      'Description':         p.description    || '',
+      'Land Use Class':      p.landUse        || '',
+      'Address':             p.address        || '',
+      'City':                p.city           || '',
+      'Full Address':        p.address        || '',
+      'Vendor':              p.seller         || '',
+      'Vendor Company':      p.seller         || '',
+      'Vendor Director':     p.sellerDir      || '',
+      'Purchaser':           p.buyer          || '',
+      'Purchaser Company':   p.buyer          || '',
+      'Purchaser Director':  p.buyerDir       || '',
+      'Legal Description':   p.legalDesc      || '',
+      'Subdivision':         p.subdivision    || '',
+      'Site Area':           p.siteArea  ? parseFloat(p.siteArea)  : '',
+      'Site Units':          p.siteUnits      || '',
+      'Bldg Area':           p.bldgArea  ? parseFloat(p.bldgArea)  : '',
+      'Bldg Units':          p.bldgUnits      || '',
+      'Sale Price':          parsePrice(p.salePrice) || '',
+      'Sale Date':           p.saleDateIso    || '',
+      'Unit Price':          ppuToNumber(p.ppu) || '',
+      'Unit Price Measure':  ppuMeasure,
+      'Cap Rate':            parseCap(p.capRate) || '',
+      'Total Units':         p.totalUnits !== undefined ? parseUnits(p.totalUnits) : '',
+      'Year Built':          parseYear(p.yearBuilt) || '',
+      'Year Sold':           p.yearSold ? parseInt(p.yearSold) : '',
+      'latitude':            p.lat,
+      'longitude':           p.lng,
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Properties');
+  const dateStr = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `refi-map-export-${dateStr}.xlsx`);
+}
 </script>
 </body>
 </html>
