@@ -228,6 +228,56 @@
     .stat-label { display: block; font-size: 9px; font-weight: 600; color: #4a6070;
                   text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
 
+    /* ── Tab toggle (List / Players) ── */
+    #tab-bar {
+      display: flex; gap: 0; border-bottom: 1px solid #1e2e3d;
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      flex: 1; padding: 6px 0;
+      font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 600;
+      background: #0c1620; color: #4a6070;
+      border: none; border-bottom: 2px solid transparent;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .tab-btn:hover { color: #7a94a8; }
+    .tab-btn.active { color: #4a9eff; border-bottom-color: #4a9eff; background: #0f1923; }
+
+    /* ── Players leaderboard ── */
+    #players-panel {
+      display: none; flex: 1; overflow-y: auto;
+      padding: 8px;
+    }
+    #players-panel.active { display: block; }
+    .players-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .players-col h4 {
+      font-size: 10px; font-weight: 700; color: #7a94a8;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin: 0 0 6px; padding-bottom: 4px;
+      border-bottom: 1px solid #1e2e3d;
+    }
+    .player-row {
+      display: flex; flex-direction: column;
+      padding: 4px 0; border-bottom: 1px solid #0f1923;
+      cursor: pointer;
+    }
+    .player-row:hover .player-name { color: #4a9eff; }
+    .player-top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 4px; margin-bottom: 2px;
+    }
+    .player-rank { font-size: 9px; color: #4a6070; font-weight: 600; flex-shrink: 0; }
+    .player-name {
+      font-size: 10px; color: #c8d8e4; font-weight: 600;
+      flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .player-vol  { font-size: 10px; color: #fff; font-weight: 700; flex-shrink: 0; }
+    .player-meta { font-size: 9px; color: #4a6070; margin-bottom: 3px; }
+    .player-bar-track { height: 3px; background: #1a2a38; border-radius: 2px; }
+    .player-bar-fill  { height: 3px; background: #4a9eff; border-radius: 2px; }
+
     /* ── Refi tier colours ── */
     .refi-badge.tier-critical    { background: #c0392b; }
     .refi-badge.tier-approaching { background: #e67e00; }
@@ -241,9 +291,10 @@
 
     /* ── Property list ── */
     #prop-list {
-      flex: 1; overflow-y: auto;
+      display: none; flex: 1; overflow-y: auto;
       padding: 4px 8px 16px;
     }
+    #prop-list.active { display: block; }
     #prop-list::-webkit-scrollbar { width: 4px; }
     #prop-list::-webkit-scrollbar-thumb { background: #2a3f52; border-radius: 2px; }
 
@@ -437,6 +488,12 @@
 
   </div><!-- /adv-filters -->
 
+  <!-- Tab bar -->
+  <div id="tab-bar">
+    <button class="tab-btn active" id="tab-list"    onclick="toggleTab('list')">List</button>
+    <button class="tab-btn"        id="tab-players" onclick="toggleTab('players')">Players</button>
+  </div>
+
   <!-- Sort + count -->
   <div id="list-controls">
     <span id="prop-count">0 properties</span>
@@ -461,6 +518,7 @@
 
   <div id="stats-bar"></div>
   <div id="prop-list"></div>
+  <div id="players-panel"></div>
 </div>
 
 <button id="sidebar-toggle" onclick="toggleSidebar()">&#9664;</button>
@@ -530,6 +588,17 @@ function fmtVolume(n) {
 function parseMonthsOut(str) {
   const m = parseInt((str || '').replace(/[^0-9]/g, ''));
   return isNaN(m) ? null : m;
+}
+
+let currentTab = 'list';
+
+function toggleTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-list').classList.toggle('active',    tab === 'list');
+  document.getElementById('tab-players').classList.toggle('active', tab === 'players');
+  document.getElementById('list-controls').style.display = tab === 'list' ? '' : 'none';
+  document.getElementById('prop-list').classList.toggle('active',    tab === 'list');
+  document.getElementById('players-panel').classList.toggle('active', tab === 'players');
 }
 
 function refiTier(p) {
@@ -748,6 +817,7 @@ function resetAll() {
   document.getElementById('buyer-input').value  = '';
   document.getElementById('seller-input').value = '';
   document.getElementById('sort-select').value = 'date|desc';
+  toggleTab('list');
   currentTypeFilter = 'all';
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('.type-btn').classList.add('active');
@@ -905,6 +975,49 @@ function renderList() {
   document.getElementById('prop-count').textContent =
     `${props.length} propert${props.length === 1 ? 'y' : 'ies'}`;
 
+  // ── Players leaderboard ──
+  function buildLeader(key, filterFn) {
+    const map = {};
+    props.forEach(p => {
+      const name = p[key];
+      if (!name) return;
+      if (!map[name]) map[name] = { vol: 0, count: 0 };
+      map[name].vol   += parsePrice(p.salePrice);
+      map[name].count += 1;
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1].vol - a[1].vol)
+      .slice(0, 8)
+      .map(([name, d]) => ({ name, ...d }));
+  }
+
+  function renderLeaderCol(entries, type) {
+    if (!entries.length) return '<p style="font-size:10px;color:#4a6070;padding:4px 0">No data</p>';
+    const maxVol = entries[0].vol;
+    return entries.map((e, i) => `
+      <div class="player-row" onclick="applyPlayerFilter('${type}', ${JSON.stringify(e.name)})">
+        <div class="player-top">
+          <span class="player-rank">${i + 1}</span>
+          <span class="player-name" title="${e.name}">${e.name}</span>
+          <span class="player-vol">${fmtVolume(e.vol)}</span>
+        </div>
+        <div class="player-meta">${e.count} deal${e.count !== 1 ? 's' : ''}</div>
+        <div class="player-bar-track"><div class="player-bar-fill" style="width:${Math.round(e.vol / maxVol * 100)}%"></div></div>
+      </div>`).join('');
+  }
+
+  const buyers  = buildLeader('buyer');
+  const sellers = buildLeader('seller');
+  document.getElementById('players-panel').innerHTML = `
+    <div class="players-grid">
+      <div class="players-col">
+        <h4>Top Buyers</h4>${renderLeaderCol(buyers, 'buyer')}
+      </div>
+      <div class="players-col">
+        <h4>Top Sellers</h4>${renderLeaderCol(sellers, 'seller')}
+      </div>
+    </div>`;
+
   // Render cards
   document.getElementById('prop-list').innerHTML = props.map(p => {
     const tags = [];
@@ -939,7 +1052,22 @@ function renderList() {
 
 let filteredProps = [];
 
-document.addEventListener('DOMContentLoaded', renderList);
+function applyPlayerFilter(type, name) {
+  if (type === 'buyer') {
+    document.getElementById('buyer-input').value = name;
+    document.getElementById('seller-input').value = '';
+  } else {
+    document.getElementById('seller-input').value = name;
+    document.getElementById('buyer-input').value = '';
+  }
+  toggleTab('list');
+  renderList();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  toggleTab('list');
+  renderList();
+});
 
 // ─────────────────────────────────────────────
 // Excel export
