@@ -678,12 +678,17 @@ function refiTier(p) {
 // ─────────────────────────────────────────────
 // Color scale (PPU, blue → red via D3 v3)
 // ─────────────────────────────────────────────
+if (typeof allProps === 'undefined' || !allProps) {
+  document.body.innerHTML = '<div style="color:#e8edf2;background:#0f1923;height:100vh;display:flex;align-items:center;justify-content:center;font-family:DM Sans,sans-serif;font-size:14px;">No data found. Make sure properties.js is in the same folder, or use the Colab notebook to generate refi_map.html.</div>';
+  throw new Error('allProps not defined — properties.js missing or failed to load');
+}
+
 // Land PPU is per-acre (very different scale) — only use building PPU for the color scale
 const ppuValues = allProps
   .filter(p => !p.propType || p.propType !== 'Land')
   .map(p => ppuToNumber(p.ppu)).filter(v => v > 0);
-const ppuMin = Math.min(...ppuValues);
-const ppuMax = Math.max(...ppuValues);
+const ppuMin = ppuValues.length ? Math.min(...ppuValues) : 0;
+const ppuMax = ppuValues.length ? Math.max(...ppuValues) : 1;
 
 const colorScale = d3.scale.linear()
   .domain([ppuMin, (ppuMin + ppuMax) / 2, ppuMax])
