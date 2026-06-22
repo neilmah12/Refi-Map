@@ -9,10 +9,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
 
-  <!-- Leaflet Draw -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
   <!-- MarkerCluster -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.css"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.Default.css"/>
@@ -262,6 +258,40 @@
     }
     .ts-btn:hover { color: #4a9eff; border-color: #4a9eff; }
     .ts-btn.playing { color: #e67e00; border-color: #e67e00; }
+
+    /* ── Custom draw control ── */
+    .draw-ctrl a {
+      display: flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; font-size: 17px;
+      text-decoration: none; color: #444;
+      background: #fff; border-bottom: 1px solid #ccc;
+    }
+    .draw-ctrl a:last-child { border-bottom: none; }
+    .draw-ctrl a:hover { background: #f4f4f4; color: #4a9eff; }
+    .draw-ctrl a.active { color: #4a9eff; background: #eaf3ff; }
+
+    /* ── Subdivision multi-select ── */
+    .subdiv-wrap   { position: relative; }
+    .subdiv-header { display: flex; gap: 4px; }
+    .subdiv-header .filter-input { flex: 1; }
+    .subdiv-toggle {
+      background: #162130; border: 1px solid #1e2e3d; color: #7a94a8;
+      padding: 0 9px; border-radius: 4px; font-size: 13px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .subdiv-toggle:hover { color: #4a9eff; border-color: #4a9eff; }
+    #subdiv-panel {
+      display: none; position: absolute; left: 0; right: 0; top: 100%;
+      background: #0c1620; border: 1px solid #1e2e3d; border-top: none;
+      max-height: 200px; overflow-y: auto; z-index: 10001;
+      border-radius: 0 0 4px 4px;
+    }
+    #subdiv-panel.open { display: block; }
+    .subdiv-item { display: flex; align-items: center; gap: 7px; padding: 5px 10px; cursor: pointer; }
+    .subdiv-item:hover { background: #162130; }
+    .subdiv-item input[type="checkbox"] { accent-color: #4a9eff; cursor: pointer; flex-shrink: 0; }
+    .subdiv-item label { font-size: 11px; color: #e8edf2; cursor: pointer; flex: 1;
+                         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* ── Tab toggle (List / Players) ── */
     #tab-bar {
@@ -518,6 +548,21 @@
       <label>Zoning / Land Use</label>
       <input type="text" class="filter-input" id="zoning-input"
              placeholder="e.g. RA7, DC1, RF5…" oninput="renderList()">
+    </div>
+
+    <!-- Subdivision multi-select -->
+    <div class="filter-section">
+      <label>Subdivision <span id="subdiv-count-label" style="font-weight:400;color:#4a9eff;font-size:10px;"></span></label>
+      <div class="subdiv-wrap">
+        <div class="subdiv-header">
+          <input type="text" class="filter-input" id="subdiv-search"
+                 placeholder="Search subdivisions…"
+                 oninput="buildSubdivList(this.value)"
+                 onfocus="openSubdivPanel()">
+          <button class="subdiv-toggle" onclick="toggleSubdivPanel()">&#9662;</button>
+        </div>
+        <div id="subdiv-panel"></div>
+      </div>
     </div>
 
     <!-- Buyer / Purchaser -->
@@ -831,37 +876,140 @@ L.control.layers(
 
 
 // ─────────────────────────────────────────────
-// Draw filter (polygon / rectangle)
+// Custom draw tool (pure Leaflet, no plugin)
 // ─────────────────────────────────────────────
-try {
-  drawnItems = new L.FeatureGroup().addTo(map);
+(function() {
+  const ctrl = L.control({ position: 'bottomright' });
+  ctrl.onAdd = function() {
+    const c = L.DomUtil.create('div', 'leaflet-bar leaflet-control draw-ctrl');
+    c.innerHTML =
+      '<a id="draw-rect-btn" href="#" title="Draw rectangle to filter by area">&#9645;</a>' +
+      '<a id="draw-poly-btn" href="#" title="Draw polygon to filter by area">&#11039;</a>' +
+      '<a id="draw-clear-btn" href="#" title="Clear drawn filter" style="display:none;color:#e67e00;">&#10005;</a>';
+    L.DomEvent.disableClickPropagation(c);
+    c.querySelector('#draw-rect-btn').addEventListener('click', function(e) {
+      e.preventDefault(); drawMode === 'rectangle' ? exitDrawMode() : enterDrawMode('rectangle');
+    });
+    c.querySelector('#draw-poly-btn').addEventListener('click', function(e) {
+      e.preventDefault(); drawMode === 'polygon' ? exitDrawMode() : enterDrawMode('polygon');
+    });
+    c.querySelector('#draw-clear-btn').addEventListener('click', function(e) {
+      e.preventDefault(); clearDraw();
+    });
+    return c;
+  };
+  ctrl.addTo(map);
+})();
 
-  new L.Control.Draw({
-    position: 'bottomright',
-    draw: {
-      polygon:      { shapeOptions: { color: '#4a9eff', weight: 2, fillOpacity: 0.08 } },
-      rectangle:    { shapeOptions: { color: '#4a9eff', weight: 2, fillOpacity: 0.08 } },
-      polyline:     false,
-      circle:       false,
-      circlemarker: false,
-      marker:       false,
-    },
-    edit: { featureGroup: drawnItems }
-  }).addTo(map);
+let drawMode    = null;
+let drawLayer   = null;
+let polyVerts   = [];
+let polyPreview = null;
+let rectStart   = null;
+let rectPreview = null;
+let clickTimer  = null;
 
-  map.on('draw:created', function(e) {
-    drawnItems.clearLayers();
-    drawnItems.addLayer(e.layer);
-    drawFilter = { type: e.layerType, layer: e.layer };
-    renderList();
-  });
+function enterDrawMode(mode) {
+  exitDrawMode(false);
+  drawMode = mode;
+  map.getContainer().style.cursor = 'crosshair';
+  map.dragging.disable();
+  const rb = document.getElementById('draw-rect-btn');
+  const pb = document.getElementById('draw-poly-btn');
+  if (rb) rb.classList.toggle('active', mode === 'rectangle');
+  if (pb) pb.classList.toggle('active', mode === 'polygon');
+  if (mode === 'rectangle') {
+    map.once('mousedown', onRectStart);
+  } else {
+    map.doubleClickZoom.disable();
+    map.on('click',    onPolyClick);
+    map.on('dblclick', onPolyFinish);
+  }
+}
 
-  map.on('draw:deleted', function() {
-    drawFilter = null;
-    renderList();
-  });
-} catch(e) {
-  console.warn('Leaflet Draw not available:', e);
+function exitDrawMode(restore) {
+  if (restore !== false) {
+    map.getContainer().style.cursor = '';
+    map.dragging.enable();
+    map.doubleClickZoom.enable();
+  }
+  drawMode = null;
+  if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+  map.off('mousedown', onRectStart);
+  map.off('mousemove', onRectMove);
+  map.off('mouseup',   onRectEnd);
+  map.off('click',     onPolyClick);
+  map.off('dblclick',  onPolyFinish);
+  if (rectPreview) { map.removeLayer(rectPreview); rectPreview = null; }
+  if (polyPreview) { map.removeLayer(polyPreview); polyPreview = null; }
+  polyVerts = []; rectStart = null;
+  const rb = document.getElementById('draw-rect-btn');
+  const pb = document.getElementById('draw-poly-btn');
+  if (rb) rb.classList.remove('active');
+  if (pb) pb.classList.remove('active');
+}
+
+function clearDraw() {
+  exitDrawMode();
+  if (drawLayer) { map.removeLayer(drawLayer); drawLayer = null; }
+  drawFilter = null;
+  const cb = document.getElementById('draw-clear-btn');
+  if (cb) cb.style.display = 'none';
+  renderList();
+}
+
+function commitShape(layer, type) {
+  if (drawLayer) map.removeLayer(drawLayer);
+  drawLayer  = layer;
+  drawFilter = { type, layer };
+  const cb = document.getElementById('draw-clear-btn');
+  if (cb) cb.style.display = '';
+  map.getContainer().style.cursor = '';
+  map.dragging.enable();
+  map.doubleClickZoom.enable();
+  renderList();
+}
+
+function onRectStart(e) {
+  rectStart = e.latlng;
+  map.on('mousemove', onRectMove);
+  map.on('mouseup',   onRectEnd);
+}
+function onRectMove(e) {
+  if (!rectStart) return;
+  if (rectPreview) map.removeLayer(rectPreview);
+  rectPreview = L.rectangle([rectStart, e.latlng],
+    { color: '#4a9eff', weight: 2, fillOpacity: 0.08 }).addTo(map);
+}
+function onRectEnd(e) {
+  map.off('mousemove', onRectMove);
+  map.off('mouseup',   onRectEnd);
+  if (!rectStart || !rectPreview) return;
+  const shape = rectPreview; rectPreview = null;
+  exitDrawMode();
+  commitShape(shape, 'rectangle');
+}
+
+function onPolyClick(e) {
+  if (clickTimer) return;
+  const ll = e.latlng;
+  clickTimer = setTimeout(function() {
+    clickTimer = null;
+    polyVerts.push(ll);
+    if (polyPreview) map.removeLayer(polyPreview);
+    if (polyVerts.length >= 2)
+      polyPreview = L.polyline(polyVerts, { color: '#4a9eff', weight: 2, dashArray: '5 4' }).addTo(map);
+  }, 220);
+}
+function onPolyFinish(e) {
+  if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+  if (polyVerts.length < 3) { exitDrawMode(); return; }
+  if (polyPreview) { map.removeLayer(polyPreview); polyPreview = null; }
+  const shape = L.polygon(polyVerts, { color: '#4a9eff', weight: 2, fillOpacity: 0.08 }).addTo(map);
+  const verts = polyVerts.slice();
+  polyVerts = [];
+  exitDrawMode();
+  commitShape(shape, 'polygon');
 }
 
 // ─────────────────────────────────────────────
@@ -918,6 +1066,7 @@ function resetAll() {
   document.getElementById('cap-min').value     = '';
   document.getElementById('cap-max').value     = '';
   document.getElementById('zoning-input').value = '';
+  clearSubdivFilter();
   document.getElementById('buyer-input').value  = '';
   document.getElementById('seller-input').value = '';
   document.getElementById('sort-select').value = 'date|desc';
@@ -1011,6 +1160,11 @@ function renderList() {
     props = props.filter(p =>
       (p.landUse || '').toLowerCase().includes(zoningQ)
     );
+  }
+
+  // Subdivision multi-select filter
+  if (selectedSubdivs.size > 0) {
+    props = props.filter(p => selectedSubdivs.has(p.subdivision || ''));
   }
 
   // Buyer filter
@@ -1195,8 +1349,10 @@ let filteredProps   = [];
 let currentYearData = [];
 
 // ── Geographic draw filter state ──
-let drawFilter  = null;   // { type: 'rectangle'|'polygon', layer }
-let drawnItems  = null;   // L.FeatureGroup added after map init
+let drawFilter = null;   // { type: 'rectangle'|'polygon', layer }
+
+// ── Subdivision multi-select ──
+let selectedSubdivs = new Set();
 
 function raycast(lat, lng, poly) {
   let inside = false;
@@ -1216,6 +1372,78 @@ function pointInDrawFilter(lat, lng) {
   const { type, layer } = drawFilter;
   if (type === 'rectangle') return layer.getBounds().contains([lat, lng]);
   return raycast(lat, lng, layer.getLatLngs()[0]);
+}
+
+// ── Subdivision multi-select functions ──
+function getAllSubdivs() {
+  return [...new Set((typeof allProps !== 'undefined' ? allProps : [])
+    .map(p => p.subdivision).filter(Boolean))].sort();
+}
+
+function buildSubdivList(search) {
+  const panel = document.getElementById('subdiv-panel');
+  if (!panel) return;
+  const all = getAllSubdivs();
+  const q   = (search || '').toLowerCase();
+  const vis = q ? all.filter(s => s.toLowerCase().includes(q)) : all;
+  const allChk = vis.length > 0 && vis.every(s => selectedSubdivs.has(s));
+
+  let html = `<div class="subdiv-item">
+    <input type="checkbox" id="subdiv-cb-all" ${allChk ? 'checked' : ''}
+           onchange="toggleAllSubdivs(this.checked,'${q.replace(/'/g,"\\'")}')">
+    <label for="subdiv-cb-all" style="font-style:italic;">Select All</label>
+  </div>`;
+
+  vis.forEach(function(s) {
+    const cid = 'sc_' + s.replace(/[^a-z0-9]/gi, '_');
+    const chk = selectedSubdivs.has(s) ? 'checked' : '';
+    const esc = s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    html += `<div class="subdiv-item">
+      <input type="checkbox" id="${cid}" ${chk} onchange="toggleSubdiv('${esc}', this.checked)">
+      <label for="${cid}">${s}</label>
+    </div>`;
+  });
+
+  panel.innerHTML = html;
+  updateSubdivLabel();
+}
+
+function toggleSubdiv(name, checked) {
+  if (checked) selectedSubdivs.add(name);
+  else selectedSubdivs.delete(name);
+  updateSubdivLabel();
+  renderList();
+}
+
+function toggleAllSubdivs(checked, q) {
+  const all = getAllSubdivs();
+  const vis = q ? all.filter(s => s.toLowerCase().includes(q)) : all;
+  vis.forEach(function(s) { if (checked) selectedSubdivs.add(s); else selectedSubdivs.delete(s); });
+  buildSubdivList(q);
+  renderList();
+}
+
+function updateSubdivLabel() {
+  const el = document.getElementById('subdiv-count-label');
+  if (el) el.textContent = selectedSubdivs.size > 0 ? '(' + selectedSubdivs.size + ' selected)' : '';
+}
+
+function openSubdivPanel() {
+  buildSubdivList(document.getElementById('subdiv-search').value);
+  document.getElementById('subdiv-panel').classList.add('open');
+}
+
+function toggleSubdivPanel() {
+  const panel = document.getElementById('subdiv-panel');
+  if (panel.classList.contains('open')) panel.classList.remove('open');
+  else openSubdivPanel();
+}
+
+function clearSubdivFilter() {
+  selectedSubdivs.clear();
+  const s = document.getElementById('subdiv-search');
+  if (s) s.value = '';
+  updateSubdivLabel();
 }
 
 // ── Time slider state ──
@@ -1395,6 +1623,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initYearSlider();
   toggleTab('list');
   renderList();
+
+  // Close subdivision panel when clicking outside it
+  document.addEventListener('click', function(e) {
+    const wrap = document.querySelector('.subdiv-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      const panel = document.getElementById('subdiv-panel');
+      if (panel) panel.classList.remove('open');
+    }
+  });
 });
 
 // ─────────────────────────────────────────────
