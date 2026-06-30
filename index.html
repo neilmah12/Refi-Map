@@ -356,16 +356,19 @@
       margin-bottom: 6px; padding: 0 2px;
     }
 
-    /* ── Refi tier colours ── */
-    .refi-badge.tier-critical    { background: #c0392b; }
-    .refi-badge.tier-approaching { background: #e67e00; }
-    .refi-badge.tier-horizon     { background: #9a7d0a; }
-    .prop-card.tier-critical    { border-left-color: #c0392b; }
-    .prop-card.tier-approaching { border-left-color: #e67e00; }
-    .prop-card.tier-horizon     { border-left-color: #9a7d0a; }
-    .refi-alert.tier-critical    { border-left-color: #c0392b; background: #fdecea; }
-    .refi-alert.tier-approaching { border-left-color: #e67e00; background: #fff3e0; }
-    .refi-alert.tier-horizon     { border-left-color: #9a7d0a; background: #fffde7; }
+    /* ── Refi window colours ── */
+    .refi-badge.tier-w0-6    { background: #c0392b; }
+    .refi-badge.tier-w7-12   { background: #e67e00; }
+    .refi-badge.tier-w13-18  { background: #9a7d0a; }
+    .refi-badge.tier-w19-24  { background: #2e6f9e; }
+    .prop-card.tier-w0-6    { border-left-color: #c0392b; }
+    .prop-card.tier-w7-12   { border-left-color: #e67e00; }
+    .prop-card.tier-w13-18  { border-left-color: #9a7d0a; }
+    .prop-card.tier-w19-24  { border-left-color: #2e6f9e; }
+    .refi-alert.tier-w0-6    { border-left-color: #c0392b; background: #fdecea; }
+    .refi-alert.tier-w7-12   { border-left-color: #e67e00; background: #fff3e0; }
+    .refi-alert.tier-w13-18  { border-left-color: #9a7d0a; background: #fffde7; }
+    .refi-alert.tier-w19-24  { border-left-color: #2e6f9e; background: #eaf3fa; }
 
     /* ── Property list ── */
     #prop-list {
@@ -711,12 +714,23 @@ function toggleTab(tab) {
   if (tab === 'trends') drawTrends(currentYearData);
 }
 
-function refiTier(p) {
+// Refi windows, labeled by time range (not priority). Each has its own color
+// used consistently for marker, badge, card border, and popup alert.
+const REFI_WINDOWS = [
+  { id: 'w0-6',   label: '0–6 months',   min: 0,  max: 6,  color: '#c0392b', markerColor: 'red'       },
+  { id: 'w7-12',  label: '7–12 months',  min: 7,  max: 12, color: '#e67e00', markerColor: 'orange'    },
+  { id: 'w13-18', label: '13–18 months', min: 13, max: 18, color: '#9a7d0a', markerColor: 'lightred'  },
+  { id: 'w19-24', label: '19–24 months', min: 19, max: 24, color: '#2e6f9e', markerColor: 'cadetblue' },
+];
+
+function refiWindow(p) {
   const m = parseMonthsOut(p.monthsOut);
-  if (m === null) return 'approaching';
-  if (m <= 6)  return 'critical';
-  if (m <= 12) return 'approaching';
-  return 'horizon';
+  if (m === null) return null;
+  return REFI_WINDOWS.find(w => m >= w.min && m <= w.max) || null;
+}
+
+function inRefiWindow(p) {
+  return refiWindow(p) !== null;
 }
 
 
@@ -790,7 +804,7 @@ function refiPopupHTML(p) {
   return `
     <div class="sale-popup">
       <div class="popup-title">${p.address}${idBadge}</div>
-      <div class="refi-alert tier-${refiTier(p)}">⏰ Refi in ${p.monthsOut} (${p.refiDate})</div>
+      <div class="refi-alert tier-${refiWindow(p).id}">⏰ Refi in ${p.monthsOut} (${p.refiDate})</div>
       <b>Original Sale:</b> ${p.saleDate}<br>
       <b>Sale Price:</b> ${p.salePrice}<br>
       <b>Total Units:</b> ${p.totalUnits}<br>
@@ -817,9 +831,10 @@ function makeCircleMarker(p) {
 }
 
 function makeRefiMarker(p) {
+  const win = refiWindow(p);
   return L.marker([p.lat, p.lng], {
     icon: L.AwesomeMarkers.icon({
-      markerColor: refiTier(p) === 'critical' ? 'red' : refiTier(p) === 'approaching' ? 'orange' : 'lightred',
+      markerColor: win ? win.markerColor : 'gray',
       iconColor: 'white',
       icon: 'time',
       prefix: 'glyphicon'
@@ -862,13 +877,37 @@ legend.addTo(map);
 
 
 // ─────────────────────────────────────────────
+// Refi window legend
+// ─────────────────────────────────────────────
+const refiLegend = L.control({ position: 'topright' });
+refiLegend.onAdd = function() {
+  const div = L.DomUtil.create('div');
+  div.innerHTML = `
+    <div style="font-family:DM Sans,sans-serif;font-size:10px;color:#333">
+      ${REFI_WINDOWS.map(w => `
+        <div style="display:flex;align-items:center;gap:5px;margin:2px 0">
+          <span style="width:10px;height:10px;border-radius:50%;background:${w.color};display:inline-block;flex-shrink:0"></span>
+          <span>${w.label}</span>
+        </div>`).join('')}
+    </div>`;
+  div.style.background = 'rgba(255,255,255,0.92)';
+  div.style.borderRadius = '6px';
+  div.style.padding = '6px 8px';
+  div.style.boxShadow = '0 1px 6px rgba(0,0,0,0.2)';
+  div.style.marginTop = '6px';
+  return div;
+};
+refiLegend.addTo(map);
+
+
+// ─────────────────────────────────────────────
 // Layer control
 // ─────────────────────────────────────────────
 L.control.layers(
   {},
   {
     'All Sales': clusterLayer,
-    'Refi Window (12–18 months)': refiLayer,
+    'Refi Window (0–24 months)': refiLayer,
     'Transaction Density': heatLayer
   },
   { position: 'topright', collapsed: false }
@@ -1117,7 +1156,7 @@ function renderList() {
   let props = allProps;
 
   // Layer filter
-  if (currentFilter === 'refi') props = props.filter(p => p.isRefi);
+  if (currentFilter === 'refi') props = props.filter(inRefiWindow);
 
   // Property type filter
   if (currentTypeFilter !== 'all') {
@@ -1260,7 +1299,7 @@ function renderList() {
   refiLayer.clearLayers();
   props.forEach(p => {
     clusterLayer.addLayer(makeCircleMarker(p));
-    if (p.isRefi) refiLayer.addLayer(makeRefiMarker(p));
+    if (inRefiWindow(p)) refiLayer.addLayer(makeRefiMarker(p));
   });
   if (heatLayer.setLatLngs) {
     heatLayer.setLatLngs(props.map(p => [p.lat, p.lng]));
@@ -1324,10 +1363,10 @@ function renderList() {
       : '';
 
     const idLabel = p.propId ? `<span style="font-size:10px;color:#4a6070;font-weight:400;float:right;">ID #${p.propId}</span>` : '';
-    const tier = p.isRefi ? refiTier(p) : '';
+    const win = refiWindow(p);
     return `
-    <div class="prop-card ${p.isRefi ? `refi-card tier-${tier}` : ''}" onclick="flyTo(${p.lat}, ${p.lng})">
-      ${p.isRefi ? `<div class="refi-badge tier-${tier}">⏰ REFI ${p.monthsOut ? p.monthsOut.toUpperCase() : ''}</div>` : ''}
+    <div class="prop-card ${win ? `refi-card tier-${win.id}` : ''}" onclick="flyTo(${p.lat}, ${p.lng})">
+      ${win ? `<div class="refi-badge tier-${win.id}">⏰ REFI ${p.monthsOut ? p.monthsOut.toUpperCase() : ''}</div>` : ''}
       <div class="prop-address">${idLabel}${p.address}</div>
       ${tagsHTML}
       <div class="prop-meta">
@@ -1339,7 +1378,7 @@ function renderList() {
         <span><b>Cap</b> ${p.capRate}</span>
         <span style="grid-column:span 2"><b>Buyer</b> ${p.buyer}</span>
         <span style="grid-column:span 2"><b>Seller</b> ${p.seller}</span>
-        ${p.isRefi ? `<span style="grid-column:span 2"><b>Refi Due</b> ${p.refiDate}</span>` : ''}
+        ${win ? `<span style="grid-column:span 2"><b>Refi Due</b> ${p.refiDate}</span>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -1649,6 +1688,7 @@ function exportToExcel() {
 
   const rows = filteredProps.map(p => {
     const ppuMeasure = p.ppuMeasure || (p.ppu || '').split('/').slice(1).join('/') || '';
+    const win = refiWindow(p);
     return {
       'Home Path':           '',
       '&Home':               '',
@@ -1682,6 +1722,9 @@ function exportToExcel() {
       'Total Units':         p.totalUnits !== undefined ? parseUnits(p.totalUnits) : '',
       'Year Built':          parseYear(p.yearBuilt) || '',
       'Year Sold':           p.yearSold ? parseInt(p.yearSold) : '',
+      'Refi Window':         win ? win.label : '',
+      'Months to Refi':      p.monthsOut || '',
+      'Est. Refi Date':      p.refiDate  || '',
       'latitude':            p.lat,
       'longitude':           p.lng,
     };
