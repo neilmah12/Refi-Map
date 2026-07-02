@@ -485,7 +485,7 @@
   <!-- Search -->
   <div id="search-box">
     <input type="text" id="search-input"
-           placeholder="Search address, buyer, seller, zoning…"
+           placeholder="Search address, Prop ID, buyer, seller, zoning…"
            oninput="renderList()">
   </div>
 
@@ -1236,8 +1236,8 @@ function renderList() {
   if (search) {
     props = props.filter(p =>
       [p.address, p.buyer, p.seller, p.buyerDir, p.sellerDir,
-       p.subdivision, p.landUse, p.description, p.propType]
-        .some(f => f && f.toLowerCase().includes(search))
+       p.subdivision, p.landUse, p.description, p.propType, p.propId]
+        .some(f => f && String(f).toLowerCase().includes(search))
     );
   }
 
