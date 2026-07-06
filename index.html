@@ -946,7 +946,6 @@ let polyVerts   = [];
 let polyPreview = null;
 let rectStart   = null;
 let rectPreview = null;
-let clickTimer  = null;
 
 function enterDrawMode(mode) {
   exitDrawMode(false);
@@ -973,7 +972,6 @@ function exitDrawMode(restore) {
     map.doubleClickZoom.enable();
   }
   drawMode = null;
-  if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
   map.off('mousedown', onRectStart);
   map.off('mousemove', onRectMove);
   map.off('mouseup',   onRectEnd);
@@ -987,6 +985,10 @@ function exitDrawMode(restore) {
   if (rb) rb.classList.remove('active');
   if (pb) pb.classList.remove('active');
 }
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && drawMode) exitDrawMode();
+});
 
 function clearDraw() {
   exitDrawMode();
@@ -1030,22 +1032,20 @@ function onRectEnd(e) {
 }
 
 function onPolyClick(e) {
-  if (clickTimer) return;
-  const ll = e.latlng;
-  clickTimer = setTimeout(function() {
-    clickTimer = null;
-    polyVerts.push(ll);
-    if (polyPreview) map.removeLayer(polyPreview);
-    if (polyVerts.length >= 2)
-      polyPreview = L.polyline(polyVerts, { color: '#4a9eff', weight: 2, dashArray: '5 4' }).addTo(map);
-  }, 220);
+  polyVerts.push(e.latlng);
+  if (polyPreview) map.removeLayer(polyPreview);
+  if (polyVerts.length >= 2)
+    polyPreview = L.polyline(polyVerts, { color: '#4a9eff', weight: 2, dashArray: '5 4' }).addTo(map);
 }
 function onPolyFinish(e) {
-  if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+  // A dblclick is preceded by two 'click' events at (essentially) the same
+  // spot, so onPolyClick already pushed that location twice. Drop the
+  // duplicate so the finishing click becomes the real closing vertex
+  // instead of being discarded.
+  if (polyVerts.length >= 2) polyVerts.pop();
   if (polyVerts.length < 3) { exitDrawMode(); return; }
   if (polyPreview) { map.removeLayer(polyPreview); polyPreview = null; }
   const shape = L.polygon(polyVerts, { color: '#4a9eff', weight: 2, fillOpacity: 0.08 }).addTo(map);
-  const verts = polyVerts.slice();
   polyVerts = [];
   exitDrawMode();
   commitShape(shape, 'polygon');
