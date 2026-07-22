@@ -695,9 +695,32 @@ function fmtVolume(n) {
   return '$' + n.toFixed(0);
 }
 
-function parseMonthsOut(str) {
-  const m = parseInt((str || '').replace(/[^0-9]/g, ''));
-  return isNaN(m) ? null : m;
+const MONTH_ABBR = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+
+// refiDate ("Jan 2031") is a fixed calendar date computed once from the sale
+// date (+5yr) and never changes. Months-to-refi is recomputed live from the
+// viewer's current date on every page load, so the countdown never goes
+// stale between data re-exports.
+function parseRefiDate(str) {
+  const parts = (str || '').trim().split(/\s+/);
+  if (parts.length !== 2) return null;
+  const month = MONTH_ABBR[parts[0]];
+  const year = parseInt(parts[1]);
+  if (month === undefined || isNaN(year)) return null;
+  return new Date(year, month, 1);
+}
+
+function liveMonthsOut(p) {
+  const refi = parseRefiDate(p.refiDate);
+  if (!refi) return null;
+  const now = new Date();
+  return (refi.getFullYear() - now.getFullYear()) * 12 + (refi.getMonth() - now.getMonth());
+}
+
+function monthsOutLabel(p) {
+  const m = liveMonthsOut(p);
+  if (m === null) return '';
+  return m >= 0 ? ('~' + m + ' months') : 'Past due';
 }
 
 let currentTab = 'list';
@@ -724,7 +747,7 @@ const REFI_WINDOWS = [
 ];
 
 function refiWindow(p) {
-  const m = parseMonthsOut(p.monthsOut);
+  const m = liveMonthsOut(p);
   if (m === null) return null;
   return REFI_WINDOWS.find(w => m >= w.min && m <= w.max) || null;
 }
@@ -804,7 +827,7 @@ function refiPopupHTML(p) {
   return `
     <div class="sale-popup">
       <div class="popup-title">${p.address}${idBadge}</div>
-      <div class="refi-alert tier-${refiWindow(p).id}">⏰ Refi in ${p.monthsOut} (${p.refiDate})</div>
+      <div class="refi-alert tier-${refiWindow(p).id}">⏰ Refi in ${monthsOutLabel(p)} (${p.refiDate})</div>
       <b>Original Sale:</b> ${p.saleDate}<br>
       <b>Sale Price:</b> ${p.salePrice}<br>
       <b>Total Units:</b> ${p.totalUnits}<br>
@@ -841,7 +864,7 @@ function makeRefiMarker(p) {
     })
   })
     .bindPopup(refiPopupHTML(p), { maxWidth: 280 })
-    .bindTooltip(`⏰ Refi ${p.monthsOut} | ${p.address} | ${p.buyer}`, { sticky: true });
+    .bindTooltip(`⏰ Refi ${monthsOutLabel(p)} | ${p.address} | ${p.buyer}`, { sticky: true });
 }
 
 clusterLayer.addTo(map);
@@ -1366,7 +1389,7 @@ function renderList() {
     const win = refiWindow(p);
     return `
     <div class="prop-card ${win ? `refi-card tier-${win.id}` : ''}" onclick="flyTo(${p.lat}, ${p.lng})">
-      ${win ? `<div class="refi-badge tier-${win.id}">⏰ REFI ${p.monthsOut ? p.monthsOut.toUpperCase() : ''}</div>` : ''}
+      ${win ? `<div class="refi-badge tier-${win.id}">⏰ REFI ${monthsOutLabel(p).toUpperCase()}</div>` : ''}
       <div class="prop-address">${idLabel}${p.address}</div>
       ${tagsHTML}
       <div class="prop-meta">
@@ -1723,7 +1746,7 @@ function exportToExcel() {
       'Year Built':          parseYear(p.yearBuilt) || '',
       'Year Sold':           p.yearSold ? parseInt(p.yearSold) : '',
       'Refi Window':         win ? win.label : '',
-      'Months to Refi':      p.monthsOut || '',
+      'Months to Refi':      monthsOutLabel(p),
       'Est. Refi Date':      p.refiDate  || '',
       'latitude':            p.lat,
       'longitude':           p.lng,
