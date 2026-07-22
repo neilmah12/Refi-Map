@@ -1,7 +1,7 @@
 # Edmonton Multifamily Sales Map
-### Westmount / West Central Submarket — 2019–2026 YTD
+### Edmonton & Region — 2016–2026 YTD
 
-Interactive Leaflet map tracking apartment building sales in Edmonton's Westmount and West Central neighbourhoods. Built for prospecting and market analysis.
+Interactive Leaflet map tracking apartment building sales across Edmonton (all subdivisions) and surrounding municipalities (Sherwood Park, St. Albert, Leduc, Fort Saskatchewan, Spruce Grove, Stony Plain, Beaumont, Devon). Started as a Westmount/West Central pilot, since expanded citywide. Built for prospecting and market analysis.
 
 ---
 
