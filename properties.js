@@ -18,7 +18,9 @@
 //   sellerDir    - seller director/principal
 //   refiDate     - estimated mortgage maturity (5yr from sale)
 //   monthsOut    - approximate months until refi from map build date
-//   isRefi       - boolean; true = within ~18mo refi window at time of build
+//   isRefi       - boolean; true = within ~18mo refi window at time of build (legacy;
+//                  the map now recomputes the refi window client-side from monthsOut,
+//                  see REFI_WINDOWS / refiWindow() in index.html, currently 0–24mo)
 //   lat / lng    - WGS84 coordinates
 //
 // Optional fields (include for richer filtering/display):
