@@ -1,7 +1,7 @@
 # Edmonton Multifamily Sales Map
-### Westmount / West Central Submarket — 2019–2026 YTD
+### Greater Edmonton Region — 2016–2026 YTD
 
-Interactive Leaflet map tracking apartment building sales in Edmonton's Westmount and West Central neighbourhoods. Built for prospecting and market analysis.
+Interactive Leaflet map tracking apartment building sales across greater Edmonton (Edmonton proper, St. Albert, Sherwood Park, Leduc, Fort Saskatchewan, Spruce Grove, Stony Plain, and surrounding areas). Built for prospecting and market analysis.
 
 ---
 
@@ -18,10 +18,9 @@ Interactive Leaflet map tracking apartment building sales in Edmonton's Westmoun
 ## Repo Structure
 
 ```
-westmount-sales-map/
+Refi-Map/
 ├── index.html          # Map UI — all HTML/CSS/JS, loads data from below
-├── data/
-│   └── properties.js   # All sale records as a JS array (allProps)
+├── properties.js       # All sale records as a JS array (allProps)
 └── README.md
 ```
 
@@ -29,7 +28,7 @@ westmount-sales-map/
 
 ## Adding New Transactions
 
-All sale data lives in `data/properties.js`. Append a new object to the `allProps` array:
+All sale data lives in `properties.js`. Append a new object to the `allProps` array:
 
 ```js
 {
@@ -73,7 +72,7 @@ npx serve .
 
 ## Coordinates
 
-Coordinates (lat/lng) are WGS84. The map is centred on the Westmount submarket around 53.539°N, 113.591°W. Use Google Maps or the City of Edmonton's SLIM Maps to look up coordinates for new properties.
+Coordinates (lat/lng) are WGS84. The map auto-fits to the bounds of all loaded properties on load. Use Google Maps or the City of Edmonton's SLIM Maps to look up coordinates for new properties.
 
 ---
 

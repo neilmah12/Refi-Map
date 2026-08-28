@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Edmonton Multifamily Sales – Westmount / West Central</title>
+  <title>Edmonton Multifamily Sales</title>
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
@@ -265,7 +265,7 @@
 <div id="sidebar">
   <div id="sidebar-header">
     <h2>Edmonton Multifamily Sales</h2>
-    <p id="header-subtitle">2019 – 2026 YTD &nbsp;|&nbsp; Gettel</p>
+    <p id="header-subtitle">2016 – 2026 YTD &nbsp;|&nbsp; Gettel</p>
   </div>
 
   <!-- Layer filter buttons -->
@@ -281,13 +281,13 @@
     <div class="filter-row">
       <span>From</span>
       <input type="date" class="filter-input" id="date-from"
-             value="2019-03-01" min="2019-03-01" max="2026-01-26"
+             value="2016-01-04" min="2016-01-04" max="2026-05-30"
              onchange="renderList()">
     </div>
     <div class="filter-row">
       <span>To</span>
       <input type="date" class="filter-input" id="date-to"
-             value="2026-01-26" min="2019-03-01" max="2026-01-26"
+             value="2026-05-30" min="2016-01-04" max="2026-05-30"
              onchange="renderList()">
     </div>
   </div>
@@ -421,10 +421,14 @@
 // Map init
 // ─────────────────────────────────────────────
 const map = L.map('map', {
-  center: [53.5390, -113.5910],
-  zoom: 14,
   zoomControl: true
 });
+
+if (allProps.length) {
+  map.fitBounds(L.latLngBounds(allProps.map(p => [p.lat, p.lng])), { padding: [20, 20] });
+} else {
+  map.setView([53.5390, -113.5910], 14);
+}
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
