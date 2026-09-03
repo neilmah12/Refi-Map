@@ -169,7 +169,9 @@
       border-bottom: 1px solid #1e2e3d;
       background: #0c1620;
     }
-    #adv-filters.open { display: block; }
+    #adv-filters.open { display: block; max-height: 46vh; overflow-y: auto; }
+    #adv-filters.open::-webkit-scrollbar { width: 4px; }
+    #adv-filters.open::-webkit-scrollbar-thumb { background: #2a3f52; border-radius: 2px; }
     #adv-filters .filter-section { border-bottom: 1px solid #162130; }
     #adv-filters .filter-section:last-child { border-bottom: none; }
 
@@ -270,28 +272,31 @@
     .draw-ctrl a:hover { background: #f4f4f4; color: #4a9eff; }
     .draw-ctrl a.active { color: #4a9eff; background: #eaf3ff; }
 
-    /* ── Subdivision multi-select ── */
-    .subdiv-wrap   { position: relative; }
-    .subdiv-header { display: flex; gap: 4px; }
-    .subdiv-header .filter-input { flex: 1; }
-    .subdiv-toggle {
+    /* ── Multi-select filters (Subdivision, Zoning, Description, City) ── */
+    .ms-wrap   { position: relative; }
+    .ms-header { display: flex; gap: 4px; }
+    .ms-header .filter-input { flex: 1; }
+    .ms-toggle {
       background: #162130; border: 1px solid #1e2e3d; color: #7a94a8;
       padding: 0 9px; border-radius: 4px; font-size: 13px; cursor: pointer;
       font-family: 'DM Sans', sans-serif;
     }
-    .subdiv-toggle:hover { color: #4a9eff; border-color: #4a9eff; }
-    #subdiv-panel {
-      display: none; position: absolute; left: 0; right: 0; top: 100%;
-      background: #0c1620; border: 1px solid #1e2e3d; border-top: none;
-      max-height: 200px; overflow-y: auto; z-index: 10001;
-      border-radius: 0 0 4px 4px;
+    .ms-toggle:hover { color: #4a9eff; border-color: #4a9eff; }
+    .ms-panel {
+      display: none; position: fixed;
+      background: #0c1620; border: 1px solid #1e2e3d;
+      max-height: 220px; overflow-y: auto; z-index: 10001;
+      border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     }
-    #subdiv-panel.open { display: block; }
-    .subdiv-item { display: flex; align-items: center; gap: 7px; padding: 5px 10px; cursor: pointer; }
-    .subdiv-item:hover { background: #162130; }
-    .subdiv-item input[type="checkbox"] { accent-color: #4a9eff; cursor: pointer; flex-shrink: 0; }
-    .subdiv-item label { font-size: 11px; color: #e8edf2; cursor: pointer; flex: 1;
+    .ms-panel.open { display: block; }
+    .ms-item { display: flex; align-items: center; gap: 7px; padding: 5px 10px; cursor: pointer; }
+    .ms-item:hover { background: #162130; }
+    .ms-item input[type="checkbox"] { accent-color: #4a9eff; cursor: pointer; flex-shrink: 0; }
+    .ms-item label { font-size: 11px; color: #e8edf2; cursor: pointer; flex: 1;
                          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .checklist-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+    .checklist-row input[type="checkbox"] { accent-color: #4a9eff; cursor: pointer; flex-shrink: 0; }
+    .checklist-row label { font-size: 11px; color: #e8edf2; cursor: pointer; }
 
     /* ── Tab toggle (List / Players) ── */
     #tab-bar {
@@ -546,40 +551,92 @@
       </div>
     </div>
 
-    <!-- Zoning / Land Use -->
+    <!-- Zoning / Land Use multi-select -->
     <div class="filter-section">
-      <label>Zoning / Land Use</label>
-      <input type="text" class="filter-input" id="zoning-input"
-             placeholder="e.g. RA7, DC1, RF5…" oninput="renderList()">
+      <label>Zoning / Land Use <span id="landUse-count-label" style="font-weight:400;color:#4a9eff;font-size:10px;"></span></label>
+      <div class="ms-wrap" id="landUse-wrap">
+        <div class="ms-header">
+          <input type="text" class="filter-input" id="landUse-search"
+                 placeholder="Search zoning e.g. RA7, RM, RMH23…"
+                 oninput="buildMsList('landUse', this.value)"
+                 onfocus="openMsPanel('landUse')">
+          <button class="ms-toggle" onclick="toggleMsPanel('landUse')">&#9662;</button>
+        </div>
+        <div id="landUse-panel" class="ms-panel"></div>
+      </div>
+    </div>
+
+    <!-- Description multi-select -->
+    <div class="filter-section">
+      <label>Description <span id="description-count-label" style="font-weight:400;color:#4a9eff;font-size:10px;"></span></label>
+      <div class="ms-wrap" id="description-wrap">
+        <div class="ms-header">
+          <input type="text" class="filter-input" id="description-search"
+                 placeholder="e.g. Walk-up, High-Rise, Row House…"
+                 oninput="buildMsList('description', this.value)"
+                 onfocus="openMsPanel('description')">
+          <button class="ms-toggle" onclick="toggleMsPanel('description')">&#9662;</button>
+        </div>
+        <div id="description-panel" class="ms-panel"></div>
+      </div>
     </div>
 
     <!-- Subdivision multi-select -->
     <div class="filter-section">
-      <label>Subdivision <span id="subdiv-count-label" style="font-weight:400;color:#4a9eff;font-size:10px;"></span></label>
-      <div class="subdiv-wrap">
-        <div class="subdiv-header">
-          <input type="text" class="filter-input" id="subdiv-search"
+      <label>Subdivision <span id="subdivision-count-label" style="font-weight:400;color:#4a9eff;font-size:10px;"></span></label>
+      <div class="ms-wrap" id="subdivision-wrap">
+        <div class="ms-header">
+          <input type="text" class="filter-input" id="subdivision-search"
                  placeholder="Search subdivisions…"
-                 oninput="buildSubdivList(this.value)"
-                 onfocus="openSubdivPanel()">
-          <button class="subdiv-toggle" onclick="toggleSubdivPanel()">&#9662;</button>
+                 oninput="buildMsList('subdivision', this.value)"
+                 onfocus="openMsPanel('subdivision')">
+          <button class="ms-toggle" onclick="toggleMsPanel('subdivision')">&#9662;</button>
         </div>
-        <div id="subdiv-panel"></div>
+        <div id="subdivision-panel" class="ms-panel"></div>
       </div>
+    </div>
+
+    <!-- City multi-select -->
+    <div class="filter-section">
+      <label>City <span id="city-count-label" style="font-weight:400;color:#4a9eff;font-size:10px;"></span></label>
+      <div class="ms-wrap" id="city-wrap">
+        <div class="ms-header">
+          <input type="text" class="filter-input" id="city-search"
+                 placeholder="Search cities…"
+                 oninput="buildMsList('city', this.value)"
+                 onfocus="openMsPanel('city')">
+          <button class="ms-toggle" onclick="toggleMsPanel('city')">&#9662;</button>
+        </div>
+        <div id="city-panel" class="ms-panel"></div>
+      </div>
+    </div>
+
+    <!-- Unit Price Measure -->
+    <div class="filter-section">
+      <label>Unit Price Basis</label>
+      <div id="ppuMeasure-checklist"></div>
     </div>
 
     <!-- Buyer / Purchaser -->
     <div class="filter-section">
-      <label>Buyer / Purchaser</label>
+      <label>Buyer / Purchaser <span style="font-weight:400;color:#4a6070;font-size:10px;">(company or director)</span></label>
       <input type="text" class="filter-input" id="buyer-input"
              placeholder="e.g. Cantiro, Smith Holdings…" oninput="renderList()">
     </div>
 
     <!-- Seller / Vendor -->
     <div class="filter-section">
-      <label>Seller / Vendor</label>
+      <label>Seller / Vendor <span style="font-weight:400;color:#4a6070;font-size:10px;">(company or director)</span></label>
       <input type="text" class="filter-input" id="seller-input"
              placeholder="e.g. Melcor, 1234567 Alberta…" oninput="renderList()">
+      <div style="font-size:10px;color:#4a6070;margin-top:3px;">Fill both to find a specific trade — matches either direction (buyer↔seller).</div>
+    </div>
+
+    <!-- Legal Description -->
+    <div class="filter-section">
+      <label>Legal Description</label>
+      <input type="text" class="filter-input" id="legal-input"
+             placeholder="e.g. 1622716, Pt 14/16…" oninput="renderList()">
     </div>
 
   </div><!-- /adv-filters -->
@@ -1108,10 +1165,11 @@ function resetAll() {
   document.getElementById('area-max').value    = '';
   document.getElementById('cap-min').value     = '';
   document.getElementById('cap-max').value     = '';
-  document.getElementById('zoning-input').value = '';
-  clearSubdivFilter();
+  ['landUse', 'description', 'subdivision', 'city'].forEach(clearMsFilter);
+  clearPpuMeasureFilter();
   document.getElementById('buyer-input').value  = '';
   document.getElementById('seller-input').value = '';
+  document.getElementById('legal-input').value  = '';
   document.getElementById('sort-select').value = 'date|desc';
   sliderYear = null;
   document.getElementById('year-slider').value = document.getElementById('year-slider').max;
@@ -1152,9 +1210,9 @@ function renderList() {
   const areaMax  = getInputVal('area-max')  !== '' ? parseFloat(getInputVal('area-max')) : null;
   const capMin   = getInputVal('cap-min')   !== '' ? parseFloat(getInputVal('cap-min'))  : null;
   const capMax   = getInputVal('cap-max')   !== '' ? parseFloat(getInputVal('cap-max'))  : null;
-  const zoningQ  = getInputVal('zoning-input').toLowerCase();
   const buyerQ   = getInputVal('buyer-input').toLowerCase();
   const sellerQ  = getInputVal('seller-input').toLowerCase();
+  const legalQ   = getInputVal('legal-input').toLowerCase();
   const sortVal  = getInputVal('sort-select') || 'date|desc';
 
   let props = allProps;
@@ -1198,32 +1256,39 @@ function renderList() {
   if (capMin !== null) props = props.filter(p => parseCap(p.capRate) >= capMin);
   if (capMax !== null) props = props.filter(p => parseCap(p.capRate) <= capMax);
 
-  // Zoning filter
-  if (zoningQ) {
-    props = props.filter(p =>
-      (p.landUse || '').toLowerCase().includes(zoningQ)
-    );
+  // Zoning / Description / Subdivision / City multi-select filters
+  ['landUse', 'description', 'subdivision', 'city'].forEach(key => {
+    if (msState[key].size > 0) {
+      const field = MS_FIELDS[key];
+      props = props.filter(p => msState[key].has(p[field] || ''));
+    }
+  });
+
+  // Unit Price Basis filter
+  if (selectedPpuMeasures.size > 0) {
+    props = props.filter(p => selectedPpuMeasures.has(p.ppuMeasure || ''));
   }
 
-  // Subdivision multi-select filter
-  if (selectedSubdivs.size > 0) {
-    props = props.filter(p => selectedSubdivs.has(p.subdivision || ''));
+  // Buyer / Seller filter — matches company or director name.
+  // When both boxes are filled, matches either direction (so you can find
+  // a trade without knowing which party was buyer vs. seller).
+  const buyerSideMatch  = (p, q) => (p.buyer    || '').toLowerCase().includes(q) || (p.buyerDir  || '').toLowerCase().includes(q);
+  const sellerSideMatch = (p, q) => (p.seller   || '').toLowerCase().includes(q) || (p.sellerDir || '').toLowerCase().includes(q);
+
+  if (buyerQ && sellerQ) {
+    props = props.filter(p =>
+      (buyerSideMatch(p, buyerQ) && sellerSideMatch(p, sellerQ)) ||
+      (buyerSideMatch(p, sellerQ) && sellerSideMatch(p, buyerQ))
+    );
+  } else if (buyerQ) {
+    props = props.filter(p => buyerSideMatch(p, buyerQ));
+  } else if (sellerQ) {
+    props = props.filter(p => sellerSideMatch(p, sellerQ));
   }
 
-  // Buyer filter
-  if (buyerQ) {
-    props = props.filter(p =>
-      (p.buyer    || '').toLowerCase().includes(buyerQ) ||
-      (p.buyerDir || '').toLowerCase().includes(buyerQ)
-    );
-  }
-
-  // Seller filter
-  if (sellerQ) {
-    props = props.filter(p =>
-      (p.seller    || '').toLowerCase().includes(sellerQ) ||
-      (p.sellerDir || '').toLowerCase().includes(sellerQ)
-    );
+  // Legal Description filter
+  if (legalQ) {
+    props = props.filter(p => (p.legalDesc || '').toLowerCase().includes(legalQ));
   }
 
   // Year slider filter
@@ -1240,7 +1305,8 @@ function renderList() {
   if (search) {
     props = props.filter(p =>
       [p.address, p.buyer, p.seller, p.buyerDir, p.sellerDir,
-       p.subdivision, p.landUse, p.description, p.propType, p.propId]
+       p.subdivision, p.landUse, p.description, p.propType, p.propId,
+       p.city, p.legalDesc]
         .some(f => f && String(f).toLowerCase().includes(search))
     );
   }
@@ -1394,8 +1460,9 @@ let currentYearData = [];
 // ── Geographic draw filter state ──
 let drawFilter = null;   // { type: 'rectangle'|'polygon', layer }
 
-// ── Subdivision multi-select ──
-let selectedSubdivs = new Set();
+// ── Generic multi-select filters (Subdivision, Zoning, Description, City) ──
+const MS_FIELDS = { subdivision: 'subdivision', landUse: 'landUse', description: 'description', city: 'city' };
+const msState = { subdivision: new Set(), landUse: new Set(), description: new Set(), city: new Set() };
 
 function raycast(lat, lng, poly) {
   let inside = false;
@@ -1417,76 +1484,117 @@ function pointInDrawFilter(lat, lng) {
   return raycast(lat, lng, layer.getLatLngs()[0]);
 }
 
-// ── Subdivision multi-select functions ──
-function getAllSubdivs() {
+// ── Generic multi-select functions ──
+function getAllMsValues(key) {
+  const field = MS_FIELDS[key];
   return [...new Set((typeof allProps !== 'undefined' ? allProps : [])
-    .map(p => p.subdivision).filter(Boolean))].sort();
+    .map(p => p[field]).filter(Boolean))].sort();
 }
 
-function buildSubdivList(search) {
-  const panel = document.getElementById('subdiv-panel');
+function positionMsPanel(key) {
+  const wrap  = document.getElementById(key + '-wrap');
+  const panel = document.getElementById(key + '-panel');
+  if (!wrap || !panel) return;
+  const r = wrap.getBoundingClientRect();
+  panel.style.left  = r.left + 'px';
+  panel.style.top   = r.bottom + 'px';
+  panel.style.width = r.width + 'px';
+}
+
+function buildMsList(key, search) {
+  const panel = document.getElementById(key + '-panel');
   if (!panel) return;
-  const all = getAllSubdivs();
+  const all = getAllMsValues(key);
   const q   = (search || '').toLowerCase();
   const vis = q ? all.filter(s => s.toLowerCase().includes(q)) : all;
-  const allChk = vis.length > 0 && vis.every(s => selectedSubdivs.has(s));
+  const sel = msState[key];
+  const allChk = vis.length > 0 && vis.every(s => sel.has(s));
 
-  let html = `<div class="subdiv-item">
-    <input type="checkbox" id="subdiv-cb-all" ${allChk ? 'checked' : ''}
-           onchange="toggleAllSubdivs(this.checked,'${q.replace(/'/g,"\\'")}')">
-    <label for="subdiv-cb-all" style="font-style:italic;">Select All</label>
+  let html = `<div class="ms-item">
+    <input type="checkbox" id="${key}-cb-all" ${allChk ? 'checked' : ''}
+           onchange="toggleAllMs('${key}', this.checked,'${q.replace(/'/g,"\\'")}')">
+    <label for="${key}-cb-all" style="font-style:italic;">Select All</label>
   </div>`;
 
   vis.forEach(function(s) {
-    const cid = 'sc_' + s.replace(/[^a-z0-9]/gi, '_');
-    const chk = selectedSubdivs.has(s) ? 'checked' : '';
+    const cid = key + '_cb_' + s.replace(/[^a-z0-9]/gi, '_');
+    const chk = sel.has(s) ? 'checked' : '';
     const esc = s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    html += `<div class="subdiv-item">
-      <input type="checkbox" id="${cid}" ${chk} onchange="toggleSubdiv('${esc}', this.checked)">
+    html += `<div class="ms-item">
+      <input type="checkbox" id="${cid}" ${chk} onchange="toggleMs('${key}', '${esc}', this.checked)">
       <label for="${cid}">${s}</label>
     </div>`;
   });
 
   panel.innerHTML = html;
-  updateSubdivLabel();
+  updateMsLabel(key);
 }
 
-function toggleSubdiv(name, checked) {
-  if (checked) selectedSubdivs.add(name);
-  else selectedSubdivs.delete(name);
-  updateSubdivLabel();
+function toggleMs(key, name, checked) {
+  if (checked) msState[key].add(name);
+  else msState[key].delete(name);
+  updateMsLabel(key);
   renderList();
 }
 
-function toggleAllSubdivs(checked, q) {
-  const all = getAllSubdivs();
+function toggleAllMs(key, checked, q) {
+  const all = getAllMsValues(key);
   const vis = q ? all.filter(s => s.toLowerCase().includes(q)) : all;
-  vis.forEach(function(s) { if (checked) selectedSubdivs.add(s); else selectedSubdivs.delete(s); });
-  buildSubdivList(q);
+  vis.forEach(function(s) { if (checked) msState[key].add(s); else msState[key].delete(s); });
+  buildMsList(key, q);
   renderList();
 }
 
-function updateSubdivLabel() {
-  const el = document.getElementById('subdiv-count-label');
-  if (el) el.textContent = selectedSubdivs.size > 0 ? '(' + selectedSubdivs.size + ' selected)' : '';
+function updateMsLabel(key) {
+  const el = document.getElementById(key + '-count-label');
+  if (el) el.textContent = msState[key].size > 0 ? '(' + msState[key].size + ' selected)' : '';
 }
 
-function openSubdivPanel() {
-  buildSubdivList(document.getElementById('subdiv-search').value);
-  document.getElementById('subdiv-panel').classList.add('open');
+function openMsPanel(key) {
+  buildMsList(key, document.getElementById(key + '-search').value);
+  positionMsPanel(key);
+  document.getElementById(key + '-panel').classList.add('open');
 }
 
-function toggleSubdivPanel() {
-  const panel = document.getElementById('subdiv-panel');
+function toggleMsPanel(key) {
+  const panel = document.getElementById(key + '-panel');
   if (panel.classList.contains('open')) panel.classList.remove('open');
-  else openSubdivPanel();
+  else openMsPanel(key);
 }
 
-function clearSubdivFilter() {
-  selectedSubdivs.clear();
-  const s = document.getElementById('subdiv-search');
+function clearMsFilter(key) {
+  msState[key].clear();
+  const s = document.getElementById(key + '-search');
   if (s) s.value = '';
-  updateSubdivLabel();
+  updateMsLabel(key);
+}
+
+// ── Unit Price Basis checklist (small fixed set — no search needed) ──
+const PPU_MEASURES = ['Suite', 'Acre', 'Sq Ft', 'Unit'];
+let selectedPpuMeasures = new Set();
+
+function buildPpuMeasureChecklist() {
+  const el = document.getElementById('ppuMeasure-checklist');
+  if (!el) return;
+  el.innerHTML = PPU_MEASURES.map(m => {
+    const cid = 'ppu_cb_' + m.replace(/[^a-z0-9]/gi, '_');
+    const chk = selectedPpuMeasures.has(m) ? 'checked' : '';
+    return `<div class="checklist-row">
+      <input type="checkbox" id="${cid}" ${chk} onchange="togglePpuMeasure('${m}', this.checked)">
+      <label for="${cid}">${m}</label>
+    </div>`;
+  }).join('');
+}
+
+function togglePpuMeasure(m, checked) {
+  if (checked) selectedPpuMeasures.add(m);
+  else selectedPpuMeasures.delete(m);
+  renderList();
+}
+
+function clearPpuMeasureFilter() {
+  selectedPpuMeasures.clear();
+  buildPpuMeasureChecklist();
 }
 
 // ── Time slider state ──
@@ -1664,16 +1772,27 @@ document.addEventListener('DOMContentLoaded', () => {
     dt.value = DATE_MAX; dt.max = DATE_MAX;
   }
   initYearSlider();
+  buildPpuMeasureChecklist();
   toggleTab('list');
   renderList();
 
-  // Close subdivision panel when clicking outside it
+  // Close a multi-select panel when clicking outside its wrap
   document.addEventListener('click', function(e) {
-    const wrap = document.querySelector('.subdiv-wrap');
-    if (wrap && !wrap.contains(e.target)) {
-      const panel = document.getElementById('subdiv-panel');
-      if (panel) panel.classList.remove('open');
-    }
+    document.querySelectorAll('.ms-wrap').forEach(wrap => {
+      if (!wrap.contains(e.target)) {
+        const panel = wrap.querySelector('.ms-panel');
+        if (panel) panel.classList.remove('open');
+      }
+    });
+  });
+  window.addEventListener('resize', function() {
+    document.querySelectorAll('.ms-panel.open').forEach(panel => {
+      const key = panel.id.replace('-panel', '');
+      positionMsPanel(key);
+    });
+  });
+  document.getElementById('adv-filters').addEventListener('scroll', function() {
+    document.querySelectorAll('.ms-panel.open').forEach(panel => panel.classList.remove('open'));
   });
 });
 
