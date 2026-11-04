@@ -1,0 +1,24 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Draw filter demo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>html,body,#map{height:100%;margin:0}#c{position:absolute;z-index:1000;top:10px;left:50px;background:#fff;padding:6px 10px;font:13px sans-serif;border-radius:4px}</style>
+</head><body>
+<div id="c">Visible: <b id="n">0</b></div><div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="draw-filter.js"></script>
+<script>
+  // Fake data: 300 random points around Edmonton. Replace with your dataset.
+  const rows = Array.from({length: 300}, (_, i) => ({
+    id: i, lat: 53.54 + (Math.random() - .5) * .2, lng: -113.49 + (Math.random() - .5) * .35 }));
+  const map = L.map('map').setView([53.54, -113.49], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  const layer = L.layerGroup().addTo(map);
+  const df = createDrawFilter(map, { onChange: render });
+  function render() {
+    layer.clearLayers();
+    const vis = rows.filter(r => df.contains(r.lat, r.lng));
+    vis.forEach(r => L.circleMarker([r.lat, r.lng], {radius: 4}).addTo(layer));
+    document.getElementById('n').textContent = vis.length;
+  }
+  render();
+</script></body></html>
