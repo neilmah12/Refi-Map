@@ -1180,8 +1180,7 @@ function resetAll() {
   document.getElementById('year-slider').value = document.getElementById('year-slider').max;
   document.getElementById('slider-year-label').textContent = 'All';
   stopPlay();
-  if (drawnItems) drawnItems.clearLayers();
-  drawFilter = null;
+  clearDraw();
   toggleTab('list');
   currentTypeFilter = 'all';
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
