@@ -111,7 +111,7 @@ For each feature, check that the field exists and is populated.
 - **PPU color scale and unit price basis:** only if you have a price metric. Otherwise color by status or unit count.
 
 ## Known issues in the source map
-1. `resetAll()` (index.html line 1183) references `drawnItems`, which is never declared (leftover from the old leaflet-draw plugin). It throws a ReferenceError, so Reset all stops after clearing the inputs and does not clear the drawn shape or reset the type toggle. Fix: replace those two lines with `clearDraw()`.
+1. ~~`resetAll()` referenced an undeclared `drawnItems` and threw a ReferenceError.~~ Fixed: it now calls `clearDraw()`, so Reset all also clears the drawn shape and resets the type toggle. (Not yet verified in a browser.)
 2. Numbers are stored as formatted strings and re-parsed on every render. Fine at 1,239 rows. For a larger supply dataset, store numeric fields at ingest.
 3. Missing values (cap rate 0.0, yearBuilt 0) are treated as 0, so range filters silently exclude them. Decide how unknowns should behave in the new tool.
 4. Multi-select option lists are rebuilt from the full dataset, not the currently filtered rows, so counts and options do not cascade.
